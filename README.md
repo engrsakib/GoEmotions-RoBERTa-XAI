@@ -1,5 +1,10 @@
 # 🚀 GoEmotions-RoBERTa-XAI
 
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-0.95-green?logo=fastapi&logoColor=white) ![PyTorch](https://img.shields.io/badge/PyTorch-2.0-orange?logo=pytorch&logoColor=white) ![Transformers](https://img.shields.io/badge/Transformers-HuggingFace-ff9900?logo=huggingface&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white) ![React](https://img.shields.io/badge/React-18.2-blue?logo=react&logoColor=white) ![Node.js](https://img.shields.io/badge/Node.js-18-green?logo=node.js&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Container-blue?logo=docker&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088ff?logo=githubactions&logoColor=white) ![ESLint](https://img.shields.io/badge/ESLint-Linting-4B32C3?logo=eslint&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-styling-06B6D4?logo=tailwindcss&logoColor=white) ![Captum](https://img.shields.io/badge/Captum-XAI-563D7C) ![ONNX](https://img.shields.io/badge/ONNX-Export-000000?logo=onnx&logoColor=white)
+
 Project: Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps  
 This repository provides a production-grade monorepo layout for a sentiment classification system based on RoBERTa fine-tuned on the GoEmotions dataset, augmented with token-level XAI heatmaps for interpretability. The stack includes a model service (Python/FastAPI), a Next.js (v16) frontend UI, and a Next.js (v16) backend API — all runnable from a single Docker image.
 
