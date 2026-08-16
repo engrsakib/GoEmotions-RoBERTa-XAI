@@ -3,7 +3,7 @@ version: "3.9"
 services:
   model:
     build:
-      context: ./services/model
+      context: ./packages/model
       dockerfile: Dockerfile
     image: goemotions-model:latest
     container_name: goemotions-model
@@ -13,7 +13,7 @@ services:
       MODEL_PATH: /app/saved_emotion_model
       PYTHONUNBUFFERED: "1"
     volumes:
-      - ./services/model/saved_emotion_model:/app/saved_emotion_model:ro
+      - ./packages/model/saved_emotion_model:/app/saved_emotion_model:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -25,7 +25,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: services/api/Dockerfile
+      dockerfile: packages/api/Dockerfile
     image: goemotions-api:latest
     container_name: goemotions-api
     ports:

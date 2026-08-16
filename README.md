@@ -14,16 +14,16 @@ The system classifies text into 7 emotion groups, generates token-level Integrat
 ```mermaid
 flowchart LR
   User[Browser / Client] --> Frontend[packages/frontend\nNext.js 16 UI]
-  Frontend --> API[services/api\nNestJS Gateway :4000]
-  API --> Model[services/model\nFastAPI + RoBERTa :8000]
+  Frontend --> API[packages/api\nNestJS Gateway :4000]
+  API --> Model[packages/model\nFastAPI + RoBERTa :8000]
   Model --> Weights[saved_emotion_model/]
 ```
 
 | Service | Path | Port | Responsibility |
 |---|---|---:|---|
 | Frontend UI | `packages/frontend` | 3000 | Input form, prediction panel, token heatmap rendering |
-| API Gateway | `services/api` | 4000 | Proxy `/predict`, `/explain`, `/chat`, `/grok/classify` |
-| Model Service | `services/model` | 8000 | RoBERTa inference + Captum Integrated Gradients |
+| API Gateway | `packages/api` | 4000 | Proxy `/predict`, `/explain`, `/chat`, `/grok/classify` |
+| Model Service | `packages/model` | 8000 | RoBERTa inference + Captum Integrated Gradients |
 
 ## Classification Categories
 
@@ -39,45 +39,71 @@ flowchart LR
 
 ## Monorepo Directory Tree
 
+All application code lives under `packages/` — three packages only: **frontend**, **api**, and **model**.
+
 ```
 .
 ├── README.md
 ├── LICENSE.md
-├── package.json
-├── pnpm-workspace.yaml
+├── package.json                      # root pnpm scripts
+├── pnpm-workspace.yaml               # packages/*
 ├── pnpm-lock.yaml
 ├── .npmrc
 ├── .env.example
-├── docker-compose.yml
-├── docker-compose.override.yml
+├── docker-compose.yml                # orchestrates model + api + frontend
+├── docker-compose.override.yml       # dev hot-reload overrides
 ├── .dockerignore
-├── .github/workflows/ci.yml
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── .eslintrc.json
 ├── .gitignore
-├── data/raw/goemotions/              # GoEmotions raw dataset
+├── data/
+│   └── raw/
+│       └── goemotions/               # GoEmotions dataset
 ├── notebooks/
 │   └── lab_final.ipynb               # training + XAI notebook
-├── packages/
-│   └── frontend/                     # Next.js 16 UI (pnpm workspace)
-│       ├── app/
-│       ├── components/
-│       ├── lib/
-│       ├── Dockerfile
-│       └── package.json
-├── services/
-│   ├── api/                          # NestJS API gateway (pnpm workspace)
-│   │   ├── src/
-│   │   ├── Dockerfile
-│   │   └── package.json
-│   └── model/                        # FastAPI RoBERTa service (Python)
-│       ├── app/
-│       ├── saved_emotion_model/
-│       │   ├── label_map.json
-│       │   └── weights/              # optional checkpoint archives
-│       ├── Dockerfile
-│       └── requirements.txt
-├── scripts/
-└── project-plan/                     # gitignored production checklist
+├── scripts/                          # utility scripts
+├── project-plan/                     # gitignored production checklist
+└── packages/
+    ├── frontend/                     # Next.js 16 UI (:3000)
+    │   ├── app/
+    │   │   ├── layout.tsx
+    │   │   ├── page.tsx
+    │   │   └── globals.css
+    │   ├── components/
+    │   │   └── HeatmapText.tsx
+    │   ├── lib/
+    │   │   └── api.ts
+    │   ├── public/
+    │   ├── Dockerfile
+    │   ├── next.config.ts
+    │   ├── package.json
+    │   └── tsconfig.json
+    ├── api/                          # NestJS API Gateway (:4000)
+    │   ├── src/
+    │   │   ├── main.ts
+    │   │   ├── app.module.ts
+    │   │   ├── app.controller.ts
+    │   │   ├── model.service.ts
+    │   │   └── dto/
+    │   │       └── text.dto.ts
+    │   ├── Dockerfile
+    │   ├── package.json
+    │   └── tsconfig.json
+    └── model/                        # FastAPI RoBERTa service (:8000)
+        ├── app/
+        │   ├── main.py
+        │   ├── inference.py
+        │   ├── explainability.py
+        │   ├── labels.py
+        │   └── schemas.py
+        ├── saved_emotion_model/
+        │   ├── label_map.json
+        │   ├── README.md
+        │   └── weights/              # drop trained checkpoint here
+        ├── Dockerfile
+        └── requirements.txt
 ```
 
 ## Technologies
@@ -110,7 +136,7 @@ flowchart LR
 
 ## Model Weights
 
-Copy your trained checkpoint into `services/model/saved_emotion_model/`:
+Copy your trained checkpoint into `packages/model/saved_emotion_model/`:
 
 ```python
 trainer.save_model("./saved_emotion_model")
@@ -148,11 +174,10 @@ This monorepo uses **pnpm workspaces** exclusively.
 # pnpm-workspace.yaml
 packages:
   - 'packages/*'
-  - 'services/*'
 ```
 
-Node workspaces: `packages/frontend`, `services/api`  
-Python service (`services/model`) is managed via `pip` + `requirements.txt`.
+Node workspaces: `packages/frontend`, `packages/api`  
+Python service (`packages/model`) is managed via `pip` + `requirements.txt`.
 
 ### Local setup
 
@@ -193,7 +218,7 @@ corepack enable
 pnpm install
 
 # Terminal 1 - model (Python)
-cd services/model
+cd packages/model
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
@@ -210,7 +235,7 @@ pnpm dev:frontend
 4. Fine-tune RoBERTa: batch 16, lr `2e-5`, epochs 3–5, weight decay `0.01`.
 5. Track macro F1 and per-class F1; early-stop on macro F1.
 6. Generate token heatmaps with Integrated Gradients (Captum).
-7. Export best checkpoint to `services/model/saved_emotion_model/`.
+7. Export best checkpoint to `packages/model/saved_emotion_model/`.
 8. Log experiments with W&B or TensorBoard; pin dependencies in `requirements.txt`.
 
 ## CI

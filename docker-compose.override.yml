@@ -3,17 +3,17 @@ version: "3.9"
 services:
   model:
     volumes:
-      - ./services/model/app:/app/app
-      - ./services/model/saved_emotion_model:/app/saved_emotion_model
+      - ./packages/model/app:/app/app
+      - ./packages/model/saved_emotion_model:/app/saved_emotion_model
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   api:
     build:
       context: .
-      dockerfile: services/api/Dockerfile
+      dockerfile: packages/api/Dockerfile
       target: development
     volumes:
-      - ./services/api/src:/app/services/api/src
+      - ./packages/api/src:/app/packages/api/src
       - pnpm-store:/pnpm/store
     environment:
       NODE_ENV: development

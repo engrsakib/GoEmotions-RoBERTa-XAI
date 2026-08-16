@@ -18,8 +18,8 @@ coverage/
 coverage.xml
 logs/
 secrets/
-services/model/saved_emotion_model/weights/*
-!services/model/saved_emotion_model/weights/.gitkeep
-services/model/saved_emotion_model/*.bin
-services/model/saved_emotion_model/*.safetensors
-services/model/saved_emotion_model/checkpoint-*/
+packages/model/saved_emotion_model/weights/*
+!packages/model/saved_emotion_model/weights/.gitkeep
+packages/model/saved_emotion_model/*.bin
+packages/model/saved_emotion_model/*.safetensors
+packages/model/saved_emotion_model/checkpoint-*/

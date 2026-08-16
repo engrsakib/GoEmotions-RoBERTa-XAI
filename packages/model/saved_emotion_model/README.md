@@ -26,7 +26,7 @@ tokenizer.save_pretrained(SAVE_DIR)
 
 Then copy the exported folder into:
 
-`services/model/saved_emotion_model/`
+`packages/model/saved_emotion_model/`
 
 ## Docker volume
 

@@ -12,6 +12,6 @@ notebooks
 data
 *.md
 !README.md
-services/model/saved_emotion_model/*.bin
-services/model/saved_emotion_model/*.safetensors
-services/model/saved_emotion_model/checkpoint-*
+packages/model/saved_emotion_model/*.bin
+packages/model/saved_emotion_model/*.safetensors
+packages/model/saved_emotion_model/checkpoint-*

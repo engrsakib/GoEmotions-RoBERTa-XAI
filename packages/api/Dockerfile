@@ -11,22 +11,22 @@ RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
-COPY services/api/package.json ./services/api/
+COPY packages/api/package.json ./packages/api/
 RUN pnpm install --frozen-lockfile --filter goemotions-api...
 
 FROM base AS development
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
-COPY services/api/package.json ./services/api/
+COPY packages/api/package.json ./packages/api/
 RUN pnpm install --filter goemotions-api
-COPY services/api ./services/api
+COPY packages/api ./packages/api
 EXPOSE 4000
 CMD ["pnpm", "--filter", "goemotions-api", "start:dev"]
 
 FROM base AS builder
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
-COPY services/api ./services/api
+COPY packages/api ./packages/api
 RUN pnpm install --frozen-lockfile --filter goemotions-api
 RUN pnpm --filter goemotions-api build
 RUN pnpm deploy --filter goemotions-api --prod /prod/api
