@@ -247,4 +247,4 @@ GitHub Actions runs:
 
 ## License
 
-MIT — Copyright (c) 2026 Md. Nazmus Sakib ([engrsakib.com](https://engrsakib.com))
+Apache License 2.0 — Copyright (c) 2026 Md. Nazmus Sakib ([engrsakib.com](https://engrsakib.com))
