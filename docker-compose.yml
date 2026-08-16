@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  model:
+    build:
+      context: ./services/model
+      dockerfile: Dockerfile
+    image: goemotions-model:latest
+    container_name: goemotions-model
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_PATH: /app/saved_emotion_model
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./services/model/saved_emotion_model:/app/saved_emotion_model:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    image: goemotions-api:latest
+    container_name: goemotions-api
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MODEL_SERVICE_URL: http://model:8000
+      CORS_ORIGIN: http://localhost:3000
+    depends_on:
+      model:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    image: goemotions-frontend:latest
+    container_name: goemotions-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  default:
+    name: goemotions-network

@@ -1,11 +1,18 @@
 {
   "name": "goemotions-roberta-xai-monorepo",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
   "scripts": {
-    "build": "echo \"build root\"",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "dev": "pnpm run --parallel dev:api dev:frontend",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:api": "pnpm --filter goemotions-api start:dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
   }
 }

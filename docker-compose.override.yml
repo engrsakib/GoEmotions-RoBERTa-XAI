@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  model:
+    volumes:
+      - ./services/model/app:/app/app
+      - ./services/model/saved_emotion_model:/app/saved_emotion_model
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+      target: development
+    volumes:
+      - ./services/api/src:/app/services/api/src
+      - pnpm-store:/pnpm/store
+    environment:
+      NODE_ENV: development
+      CORS_ORIGIN: http://localhost:3000
+    command: pnpm --filter goemotions-api start:dev
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      target: development
+    volumes:
+      - ./packages/frontend/app:/app/packages/frontend/app
+      - ./packages/frontend/components:/app/packages/frontend/components
+      - ./packages/frontend/lib:/app/packages/frontend/lib
+      - ./packages/frontend/public:/app/packages/frontend/public
+      - pnpm-store:/pnpm/store
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    command: pnpm --filter frontend dev
+
+volumes:
+  pnpm-store:

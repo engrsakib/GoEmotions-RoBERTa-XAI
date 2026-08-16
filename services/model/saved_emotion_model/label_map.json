@@ -1,0 +1,20 @@
+{
+  "id2label": {
+    "0": "neutral",
+    "1": "sadness_grief",
+    "2": "joy_amusement_excitement_optimism",
+    "3": "anger_annoyance_disapproval_disgust",
+    "4": "desire",
+    "5": "fear_nervousness",
+    "6": "love"
+  },
+  "label2id": {
+    "neutral": 0,
+    "sadness_grief": 1,
+    "joy_amusement_excitement_optimism": 2,
+    "anger_annoyance_disapproval_disgust": 3,
+    "desire": 4,
+    "fear_nervousness": 5,
+    "love": 6
+  }
+}

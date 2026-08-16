@@ -1,116 +1,225 @@
 # 🚀 GoEmotions-RoBERTa-XAI
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-0.95-green?logo=fastapi&logoColor=white) ![PyTorch](https://img.shields.io/badge/PyTorch-2.0-orange?logo=pytorch&logoColor=white) ![Transformers](https://img.shields.io/badge/Transformers-HuggingFace-ff9900?logo=huggingface&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white) ![React](https://img.shields.io/badge/React-18.2-blue?logo=react&logoColor=white) ![Node.js](https://img.shields.io/badge/Node.js-18-green?logo=node.js&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Container-blue?logo=docker&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088ff?logo=githubactions&logoColor=white) ![ESLint](https://img.shields.io/badge/ESLint-Linting-4B32C3?logo=eslint&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi&logoColor=white) ![PyTorch](https://img.shields.io/badge/PyTorch-2.0-orange?logo=pytorch&logoColor=white) ![Transformers](https://img.shields.io/badge/Transformers-HuggingFace-ff9900?logo=huggingface&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-10-red?logo=nestjs&logoColor=white) ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white) ![React](https://img.shields.io/badge/React-18.3-blue?logo=react&logoColor=white) ![Node.js](https://img.shields.io/badge/Node.js-20-green?logo=node.js&logoColor=white)
+![pnpm](https://img.shields.io/badge/pnpm-workspace-F69220?logo=pnpm&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088ff?logo=githubactions&logoColor=white) ![ESLint](https://img.shields.io/badge/ESLint-Linting-4B32C3?logo=eslint&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-styling-06B6D4?logo=tailwindcss&logoColor=white) ![Captum](https://img.shields.io/badge/Captum-XAI-563D7C) ![ONNX](https://img.shields.io/badge/ONNX-Export-000000?logo=onnx&logoColor=white)
 
-Project: Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps  
-This repository provides a production-grade monorepo layout for a sentiment classification system based on RoBERTa fine-tuned on the GoEmotions dataset, augmented with token-level XAI heatmaps for interpretability. The stack includes a model service (Python/FastAPI), a Next.js (v16) frontend UI, and a Next.js (v16) backend API — all runnable from a single Docker image.
+Production-grade monorepo for **GoEmotions-RoBERTa-XAI: Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps**.
 
-## Key Features
-- RoBERTa fine-tuned classifier (GoEmotions)
-- Token-level attribution heatmaps (Integrated Gradients / XAI)
-- Monorepo: frontend, backend, and model service
-- Single production Dockerfile to build and run all services
-- GitHub Actions CI: functional checks, ESLint, and Docker build
-- Grok-compatible API endpoint and a simple chatbot categorizer
+The system classifies text into 7 emotion groups, generates token-level Integrated Gradients heatmaps, and exposes a chatbot-style API through a NestJS gateway and Next.js UI.
 
-## Classification Categories (chatbot mapping)
-When a message is received, categorize into:
-0: Normal (neutral)  
-1: Sadness (sadness, grief)  
-2: Joy (joy, amusement, excitement, optimism)  
-3: Hate / Anger (anger, annoyance, disapproval, disgust)  
-4: Sexual / Desire (desire)  
-5: Fear / Anxiety (fear, nervousness)  
-6: Love / ভালোবাসা (love)
+## Architecture
 
-## Technologies & Tools
-- Python (3.10+), FastAPI, Uvicorn
-- PyTorch / Transformers (Hugging Face)
-- Captum / Integrated Gradients (or custom attribution)
-- Node.js (18+/20+), Next.js 16 (App Router)
-- React, Tailwind CSS (optional)
-- Docker (single multi-stage image)
-- GitHub Actions (CI)
-- ESLint + Prettier
-- PM2 / Supervisord (process management inside container)
-- pytest / tox (testing)
-- Weights & Biases or TensorBoard (experiment tracking)
-- Numpy / Pandas / Scikit-learn
-- ONNX (optional export for faster inference)
-- Redis (optional caching / rate limiting)
+```mermaid
+flowchart LR
+  User[Browser / Client] --> Frontend[packages/frontend\nNext.js 16 UI]
+  Frontend --> API[services/api\nNestJS Gateway :4000]
+  API --> Model[services/model\nFastAPI + RoBERTa :8000]
+  Model --> Weights[saved_emotion_model/]
+```
 
-12 Algorithms & Methods (you can use any subset during experimentation)
-1. RoBERTa (Transformer-based encoder)  
-2. Logistic Regression (baseline)  
-3. SVM (baseline)  
-4. LSTM (alternate deep model)  
-5. CNN for text (alternate)  
-6. DistilRoBERTa (compact transformer)  
-7. Fine-tuning with AdamW (optimizer recipe)  
-8. Focal Loss / Label smoothing (class handling)  
-9. Integrated Gradients (attribution)  
-10. Layer-wise Relevance Propagation (LRP) (optional)  
-11. Grad-CAM for token-level (adaptation)  
-12. ONNX model quantization / pruning (deployment optimizations)
+| Service | Path | Port | Responsibility |
+|---|---|---:|---|
+| Frontend UI | `packages/frontend` | 3000 | Input form, prediction panel, token heatmap rendering |
+| API Gateway | `services/api` | 4000 | Proxy `/predict`, `/explain`, `/chat`, `/grok/classify` |
+| Model Service | `services/model` | 8000 | RoBERTa inference + Captum Integrated Gradients |
 
-## Dataset
-- GoEmotions (Google) — multi-label emotion dataset.
-- URL: https://github.com/google-research/google-research/tree/master/goemotions
-- Place raw dataset under: `data/raw/goemotions/`
+## Classification Categories
 
-## Recommended Folder Structure
+| ID | Label |
+|---:|---|
+| 0 | Normal (neutral) |
+| 1 | Sadness (sadness, grief) |
+| 2 | Joy (joy, amusement, excitement, optimism) |
+| 3 | Hate / Anger (anger, annoyance, disapproval, disgust) |
+| 4 | Sexual / Desire (desire) |
+| 5 | Fear / Anxiety (fear, nervousness) |
+| 6 | Love / ভালোবাসা (love) |
+
+## Monorepo Directory Tree
+
 ```
 .
 ├── README.md
-├── Dockerfile
-├── .github/
-│   └── workflows/ci.yml
+├── LICENSE.md
+├── package.json
+├── pnpm-workspace.yaml
+├── pnpm-lock.yaml
+├── .npmrc
+├── .env.example
+├── docker-compose.yml
+├── docker-compose.override.yml
+├── .dockerignore
+├── .github/workflows/ci.yml
 ├── .eslintrc.json
 ├── .gitignore
-├── data/
-│   └── raw/
+├── data/raw/goemotions/              # GoEmotions raw dataset
+├── notebooks/
+│   └── lab_final.ipynb               # training + XAI notebook
 ├── packages/
-│   ├── frontend/        # Next.js v16 UI
-│   └── backend/         # Next.js v16 server-side API (app router)
+│   └── frontend/                     # Next.js 16 UI (pnpm workspace)
+│       ├── app/
+│       ├── components/
+│       ├── lib/
+│       ├── Dockerfile
+│       └── package.json
 ├── services/
-│   └── model/           # Python model service (FastAPI)
-├── notebooks/           # research notebooks (includes lab_final.ipynb)
-├── scripts/             # utility scripts: training, preprocessing, export
-└── project-plan/        # (ignored) production plan & checklist
+│   ├── api/                          # NestJS API gateway (pnpm workspace)
+│   │   ├── src/
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   └── model/                        # FastAPI RoBERTa service (Python)
+│       ├── app/
+│       ├── saved_emotion_model/
+│       │   ├── label_map.json
+│       │   └── weights/              # optional checkpoint archives
+│       ├── Dockerfile
+│       └── requirements.txt
+├── scripts/
+└── project-plan/                     # gitignored production checklist
 ```
 
-## Kaggle / Training Guidelines (high-level)
-1. Prepare data: download GoEmotions, split into train/val/test, and map labels to your 7-class mapping (or use original multi-label and convert).  
-2. Tokenization: use `roberta-base` tokenizer with MAX_LENGTH = 128 (adjust after analyzing token length distribution).  
-3. Baselines: train Logistic Regression and SVM on bag-of-words / TF-IDF for quick baselines.  
-4. Fine-tune RoBERTa: use Hugging Face Trainer or a custom PyTorch loop. Recommended hyperparams: batch_size 16, lr 2e-5, epochs 3-5, weight_decay 0.01. Use gradient accumulation if needed.  
-5. Validation: track per-class F1 and macro F1. Early stop on macro F1.  
-6. Explainability: compute token-level attributions with Integrated Gradients (captum) and normalize heatmaps for UI overlay.  
-7. Export: save best model checkpoint and optionally export to ONNX for inference speedups.  
-8. Reproducibility: seed everything, log experiments to W&B or TensorBoard, include environment.yml / requirements.txt.
+## Technologies
 
-## Docker & Production Run (single-image guideline)
-- The root `Dockerfile` builds Python and Node artifacts, then runs a small process manager that starts:
-  - `uvicorn services.model.app:app --host 0.0.0.0 --port 8000` (model API)
-  - `next start -p 3000` for frontend
-  - `next start -p 3001` for backend (if separate)
-- Expose ports 8000 (model), 3000 (UI). Map them through Docker run flags or Nginx reverse proxy in the container.  
-- Use environment variables to configure MODEL_PATH, GPU usage, and NODE_ENV=production.  
-- Healthchecks: add `/health` endpoints on every service and configure Docker HEALTHCHECK.  
-- Logging: JSON structured logs, rotate logs, and forward to STDOUT for container runtime.
+- **ML:** Python, FastAPI, PyTorch, Hugging Face Transformers, Captum (Integrated Gradients)
+- **Gateway:** NestJS, Axios, class-validator
+- **UI:** Next.js 16, React 18, Tailwind CSS, TypeScript
+- **DevOps:** Docker Compose, GitHub Actions, ESLint
 
-## Grok API & Chatbot
-- Provide an endpoint `/api/grok/classify` (POST) that accepts JSON: `{ "text": "..." }` and returns `{ "category": 3, "label": "anger", "scores": {...}, "tokens": [...], "heatmap": [...] }`.  
-- A lightweight chatbot endpoint (`/api/chat`) should call the classifier and reply with the category and a short natural response.
+### 12 Algorithms & Methods
 
-## Next Steps I Can Do (tell me which first)
-1. Create the skeleton files and CI workflow (eslint + tests + docker build).  
-2. Add the multi-stage Dockerfile that builds both Node and Python artifacts.  
-3. Scaffold minimal Next.js apps and a FastAPI model service with example endpoints.  
-4. Wire the classifier to use the notebook training artifacts and provide model loading.  
+1. RoBERTa (Transformer encoder)
+2. Logistic Regression (baseline)
+3. SVM (baseline)
+4. LSTM (alternate deep model)
+5. CNN for text (alternate)
+6. DistilRoBERTa (compact transformer)
+7. AdamW fine-tuning recipe
+8. Focal Loss / label smoothing
+9. Integrated Gradients (Captum)
+10. Layer-wise Relevance Propagation (LRP)
+11. Grad-CAM token adaptation
+12. ONNX quantization / pruning
 
-Tell me which of the actions above you want me to implement now, or I can proceed to scaffold everything recommended in this README.
+## Dataset
 
+- **GoEmotions** (Google Research)
+- URL: https://github.com/google-research/google-research/tree/master/goemotions
+- Local path: `data/raw/goemotions/`
+
+## Model Weights
+
+Copy your trained checkpoint into `services/model/saved_emotion_model/`:
+
+```python
+trainer.save_model("./saved_emotion_model")
+tokenizer.save_pretrained("./saved_emotion_model")
+```
+
+If weights are missing, the model service falls back to `roberta-base` with a 7-class head for local development only.
+
+## API Endpoints
+
+### Model service (`:8000`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/health` | Service + model status |
+| POST | `/predict` | Emotion probabilities only |
+| POST | `/explain` | Probabilities + token heatmap |
+| POST | `/chat` | Classification + chatbot reply + heatmap |
+
+### NestJS gateway (`:4000/api`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/health` | Gateway + downstream model health |
+| POST | `/api/predict` | Proxy to model `/predict` |
+| POST | `/api/explain` | Proxy to model `/explain` |
+| POST | `/api/chat` | Proxy to model `/chat` |
+| POST | `/api/grok/classify` | Grok-compatible classify + heatmap |
+
+## Package Manager (pnpm)
+
+This monorepo uses **pnpm workspaces** exclusively.
+
+```yaml
+# pnpm-workspace.yaml
+packages:
+  - 'packages/*'
+  - 'services/*'
+```
+
+Node workspaces: `packages/frontend`, `services/api`  
+Python service (`services/model`) is managed via `pip` + `requirements.txt`.
+
+### Local setup
+
+```bash
+corepack enable
+pnpm install
+cp .env.example .env
+pnpm dev                 # runs api + frontend in parallel
+```
+
+## Docker Run
+
+### Production
+
+```bash
+pnpm docker:up
+# or
+docker compose up --build
+```
+
+Services:
+- UI: http://localhost:3000
+- API Gateway: http://localhost:4000/api
+- Model: http://localhost:8000
+
+### Development (hot reload)
+
+```bash
+docker compose up --build
+```
+
+`docker-compose.override.yml` automatically mounts source folders and enables reload for all services.
+
+## Local Development (without Docker)
+
+```bash
+corepack enable
+pnpm install
+
+# Terminal 1 - model (Python)
+cd services/model
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# Terminal 2 + 3 - api + frontend (from repo root)
+pnpm dev:api
+pnpm dev:frontend
+```
+
+## Kaggle / Training Guidelines
+
+1. Download GoEmotions and map labels to the 7 target categories.
+2. Tokenize with `roberta-base`, `MAX_LENGTH=128`.
+3. Train baselines (Logistic Regression, SVM) for comparison.
+4. Fine-tune RoBERTa: batch 16, lr `2e-5`, epochs 3–5, weight decay `0.01`.
+5. Track macro F1 and per-class F1; early-stop on macro F1.
+6. Generate token heatmaps with Integrated Gradients (Captum).
+7. Export best checkpoint to `services/model/saved_emotion_model/`.
+8. Log experiments with W&B or TensorBoard; pin dependencies in `requirements.txt`.
+
+## CI
+
+GitHub Actions runs:
+- pnpm install + lint across workspaces
+- Python import smoke test for model service
+- `docker compose build`
+
+## License
+
+MIT — Copyright (c) 2026 Md. Nazmus Sakib ([engrsakib.com](https://engrsakib.com))

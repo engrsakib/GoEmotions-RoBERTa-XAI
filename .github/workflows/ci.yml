@@ -2,50 +2,45 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
   lint:
-    name: ESLint
+    name: Lint (pnpm workspaces)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
         with:
-          node-version: 18
-      - name: Install frontend deps
-        run: |
-          if [ -f packages/frontend/package.json ]; then cd packages/frontend && npm ci; fi
-      - name: Run ESLint (frontend)
-        run: |
-          if [ -f packages/frontend/package.json ]; then cd packages/frontend && npx eslint . --max-warnings=0; fi
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
 
   python-tests:
-    name: Python tests
+    name: Python smoke tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: 3.10
-      - name: Install model deps
-        run: |
-          if [ -f services/model/requirements.txt ]; then python -m pip install -r services/model/requirements.txt; fi
-      - name: Run pytest
-        run: |
-          if [ -d services/model ]; then pytest -q services/model || true; fi
+          python-version: "3.10"
+      - run: pip install -r services/model/requirements.txt
+      - run: python -c "from app.labels import NUM_LABELS; assert NUM_LABELS == 7"
+        working-directory: services/model
 
-  docker-build:
-    name: Build Docker image
+  docker-compose-build:
+    name: Docker Compose build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker
-        uses: docker/build-push-action@v4
+      - uses: pnpm/action-setup@v4
         with:
-          push: false
-          tags: ghcr.io/${{ github.repository_owner }}/goemotions-roberta-xai:latest
+          version: 9.15.4
+      - run: pnpm install --frozen-lockfile
+      - run: docker compose build
