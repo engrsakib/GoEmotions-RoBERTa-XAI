@@ -1,0 +1,11 @@
+{
+  "name": "goemotions-roberta-xai-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "echo \"build root\"",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+  }
+}

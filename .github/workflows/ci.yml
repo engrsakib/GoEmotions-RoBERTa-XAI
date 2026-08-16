@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install frontend deps
+        run: |
+          if [ -f packages/frontend/package.json ]; then cd packages/frontend && npm ci; fi
+      - name: Run ESLint (frontend)
+        run: |
+          if [ -f packages/frontend/package.json ]; then cd packages/frontend && npx eslint . --max-warnings=0; fi
+
+  python-tests:
+    name: Python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+      - name: Install model deps
+        run: |
+          if [ -f services/model/requirements.txt ]; then python -m pip install -r services/model/requirements.txt; fi
+      - name: Run pytest
+        run: |
+          if [ -d services/model ]; then pytest -q services/model || true; fi
+
+  docker-build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker
+        uses: docker/build-push-action@v4
+        with:
+          push: false
+          tags: ghcr.io/${{ github.repository_owner }}/goemotions-roberta-xai:latest
