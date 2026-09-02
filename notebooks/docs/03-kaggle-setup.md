@@ -26,7 +26,7 @@ import os
 import subprocess
 import sys
 
-REPO_URL = "https://github.com/engrsakib/GoEmotions-RoBERTa-XAI-Fine-Tuned-Sentiment-Classifier-with-Token-Level-Attribution-Heatmaps.git"
+REPO_URL = "https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git"
 REPO_DIR = "/kaggle/working/repo"
 
 if not os.path.exists(REPO_DIR):

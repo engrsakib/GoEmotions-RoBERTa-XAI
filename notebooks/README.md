@@ -12,7 +12,7 @@ All model training runs from this directory. Production inference lives in
 Or clone the repo manually:
 
 ```python
-!git clone https://github.com/engrsakib/GoEmotions-RoBERTa-XAI-Fine-Tuned-Sentiment-Classifier-with-Token-Level-Attribution-Heatmaps.git /kaggle/working/repo
+!git clone https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git /kaggle/working/repo
 %cd /kaggle/working/repo/notebooks
 !pip install -q -r requirements-train.txt
 ```
