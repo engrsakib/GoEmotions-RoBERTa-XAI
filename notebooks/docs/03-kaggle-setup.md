@@ -26,7 +26,7 @@ import os
 import subprocess
 import sys
 
-REPO_URL = "https://github.com/<your-user>/GoEmotions-RoBERTa-XAI.git"
+REPO_URL = "https://github.com/engrsakib/GoEmotions-RoBERTa-XAI-Fine-Tuned-Sentiment-Classifier-with-Token-Level-Attribution-Heatmaps.git"
 REPO_DIR = "/kaggle/working/repo"
 
 if not os.path.exists(REPO_DIR):
@@ -38,7 +38,7 @@ sys.path.insert(0, os.getcwd())
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements-train.txt"], check=True)
 ```
 
-Replace `<your-user>` with your GitHub username.
+The repo URL is pre-configured for `engrsakib/GoEmotions-RoBERTa-XAI-Fine-Tuned-Sentiment-Classifier-with-Token-Level-Attribution-Heatmaps`.
 
 ## Working Directories
 

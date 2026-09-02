@@ -1,0 +1,14 @@
+{
+  "id": "engrsakib/goemotions-roberta-xai-training",
+  "title": "GoEmotions RoBERTa XAI Training Pipeline",
+  "code_file": "../lab_final.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "dataset_sources": ["shivamb/go-emotions-google-emotions-dataset"],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
