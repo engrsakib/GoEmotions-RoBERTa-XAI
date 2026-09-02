@@ -51,6 +51,8 @@ def main() -> None:
     parser.add_argument("--skip-train", action="store_true", help="Skip RoBERTa training")
     parser.add_argument("--deploy", action="store_true", help="Copy export to packages/model/")
     parser.add_argument("--epochs", type=int, default=None, help="Override epoch count")
+    parser.add_argument("--max-train-samples", type=int, default=None, help="Limit training rows (local dev)")
+    parser.add_argument("--max-val-samples", type=int, default=None, help="Limit validation rows (local dev)")
     args = parser.parse_args()
 
     ensure_artifact_dirs()
@@ -72,6 +74,14 @@ def main() -> None:
         train_df, val_df, test_df = result["train_df"], result["val_df"], result["test_df"]
         stats = result["stats"]
         print(json.dumps({k: v for k, v in stats.items() if k != "audit"}, indent=2, default=str))
+
+    if args.max_train_samples and len(train_df) > args.max_train_samples:
+        train_df = train_df.sample(n=args.max_train_samples, random_state=42).reset_index(drop=True)
+        print(f"Using training subset: {len(train_df)} samples")
+
+    if args.max_val_samples and len(val_df) > args.max_val_samples:
+        val_df = val_df.sample(n=args.max_val_samples, random_state=42).reset_index(drop=True)
+        print(f"Using validation subset: {len(val_df)} samples")
 
     print("\n=== Section 3: Baseline ===")
     baseline = train_baseline(
