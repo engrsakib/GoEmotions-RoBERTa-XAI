@@ -1,9 +1,9 @@
 {
   "id": "engrsakib/goemotions-roberta-xai-training",
   "title": "GoEmotions RoBERTa XAI Training Pipeline",
-  "code_file": "../lab_final.ipynb",
+  "code_file": "run_training.py",
   "language": "python",
-  "kernel_type": "notebook",
+  "kernel_type": "script",
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",

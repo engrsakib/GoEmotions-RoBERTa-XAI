@@ -1,6 +1,6 @@
 # Saved Emotion Model — Weight Drop Zone
 
-Place your fine-tuned Hugging Face checkpoint here after training (`notebooks/lab_final.ipynb`).
+Place your fine-tuned Hugging Face checkpoint here after training (`notebooks/scripts/run_pipeline.py --deploy`).
 
 ## Required layout
 
