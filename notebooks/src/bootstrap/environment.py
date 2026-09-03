@@ -26,7 +26,7 @@ def bootstrap(install_deps: bool = True) -> Path:
     if is_kaggle():
         repo_dir = Path(KAGGLE_REPO_DIR)
         if not repo_dir.exists():
-            subprocess.run(["git", "clone", REPO_URL, str(repo_dir)], check=True)
+            subprocess.run(["git", "clone", "--branch", "main", "--depth", "1", REPO_URL, str(repo_dir)], check=True)
         nb_dir = repo_dir / "notebooks"
         os.chdir(nb_dir)
     elif Path.cwd().name != "notebooks" and (Path.cwd() / "notebooks").is_dir():
