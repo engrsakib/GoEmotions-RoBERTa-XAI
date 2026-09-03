@@ -22,7 +22,7 @@ Complete step-by-step guide to clone [GoEmotions-RoBERTa-XAI](https://github.com
 | **Kaggle dataset (use this)** | [shivamb/go-emotions-google-emotions-dataset](https://www.kaggle.com/datasets/shivamb/go-emotions-google-emotions-dataset) |
 | **Original source** | [GoEmotions — Google Research](https://github.com/google-research/google-research/tree/master/goemotions) |
 
-The pipeline auto-loads from `/kaggle/input/` when the dataset is attached. If not found, it falls back to KaggleHub download.
+The pipeline auto-loads from `/kaggle/input/` when the dataset is attached. **KaggleHub is not used on Kaggle** — attach the dataset as Input or place CSV under `data/raw/goemotions/`.
 
 ---
 
