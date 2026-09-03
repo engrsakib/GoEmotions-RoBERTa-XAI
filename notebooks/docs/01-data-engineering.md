@@ -10,9 +10,9 @@ production inference.
 
 ### 1. Load (`src/data/load.py`)
 
-- **Kaggle input:** scan `/kaggle/input/` for GoEmotions CSV/TSV
-- **KaggleHub fallback:** `kagglehub.dataset_download("shivamb/go-emotions-google-emotions-dataset")`
+- **Kaggle input:** walk `/kaggle/input/` for GoEmotions CSV/TSV (Add Input dataset first)
 - **Local:** `data/raw/goemotions/*.csv`
+- **KaggleHub:** local development only — **not used on Kaggle** (avoids BackendError)
 - **Official splits:** if `train.tsv`, `dev.tsv`, `test.tsv` exist, load separately
 
 Audit outputs: row count, null counts, `example_very_unclear` rate, text length stats.
