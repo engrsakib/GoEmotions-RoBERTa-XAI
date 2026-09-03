@@ -67,6 +67,9 @@ def build_trainer(
     id2label = id2label or ID2LABEL
     label2id = label2id or LABEL2ID
     model_name = config.get("model_name", "roberta-base")
+    model_id = config.get("model_id", "transformer")
+    checkpoint_dir = CHECKPOINTS_DIR / model_id
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -77,7 +80,7 @@ def build_trainer(
     )
 
     training_args = TrainingArguments(
-        output_dir=str(CHECKPOINTS_DIR),
+        output_dir=str(checkpoint_dir),
         num_train_epochs=config.get("epochs", 4),
         per_device_train_batch_size=config.get("batch_size", 16),
         per_device_eval_batch_size=config.get("eval_batch_size", 16),
@@ -144,8 +147,14 @@ def evaluate_on_test(trainer, test_dataset, id2label: dict | None = None) -> dic
     }
 
 
-def export_model(trainer, tokenizer, export_dir: Path | None = None, processed_dir: Path | None = None) -> Path:
-    export_dir = Path(export_dir or EXPORTS_DIR / "saved_emotion_model")
+def export_model(
+    trainer,
+    tokenizer,
+    export_dir: Path | None = None,
+    processed_dir: Path | None = None,
+    model_id: str = "saved_emotion_model",
+) -> Path:
+    export_dir = Path(export_dir or EXPORTS_DIR / model_id)
     processed_dir = processed_dir or PROCESSED_DIR
     export_dir.mkdir(parents=True, exist_ok=True)
 

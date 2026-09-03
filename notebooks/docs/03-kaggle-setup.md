@@ -19,26 +19,9 @@ shivamb/go-emotions-google-emotions-dataset
 The pipeline auto-detects `/kaggle/input/` paths. If missing, it falls back to
 KaggleHub download.
 
-## Bootstrap (Section 0 in lab_final.ipynb)
+## Bootstrap
 
-```python
-import os
-import subprocess
-import sys
-
-REPO_URL = "https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git"
-REPO_DIR = "/kaggle/working/repo"
-
-if not os.path.exists(REPO_DIR):
-    subprocess.run(["git", "clone", REPO_URL, REPO_DIR], check=True)
-
-os.chdir(os.path.join(REPO_DIR, "notebooks"))
-sys.path.insert(0, os.getcwd())
-
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements-train.txt"], check=True)
-```
-
-The repo URL is pre-configured for `engrsakib/GoEmotions-RoBERTa-XAI-Fine-Tuned-Sentiment-Classifier-with-Token-Level-Attribution-Heatmaps`.
+See [`scripts/run_pipeline.py`](../scripts/run_pipeline.py) or [`kaggle/run_training.py`](../kaggle/run_training.py).
 
 ## Working Directories
 
