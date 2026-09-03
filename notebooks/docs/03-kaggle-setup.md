@@ -47,11 +47,14 @@ The pipeline auto-loads from `/kaggle/input/` when the dataset is attached. **Ka
 3. Select **[GoEmotions Google Emotions Dataset](https://www.kaggle.com/datasets/shivamb/go-emotions-google-emotions-dataset)** by shivamb
 4. Click **Add**
 
-After adding, data appears at:
+After adding, data appears at one of:
 
 ```
-/kaggle/input/go-emotions-google-emotions-dataset/
+/kaggle/input/notebooks/shivamb/list-of-emotions/   ← notebook input (common)
+/kaggle/input/go-emotions-google-emotions-dataset/  ← direct dataset
 ```
+
+The loader checks **`/kaggle/input/notebooks/shivamb/list-of-emotions`** first.
 
 ---
 
@@ -236,7 +239,8 @@ print("\nDone! Weights at: notebooks/artifacts/exports/saved_emotion_model/")
 |------|---------|
 | `/kaggle/working/repo/` | Cloned GitHub repo (main branch) |
 | `/kaggle/working/repo/notebooks/` | Training code root |
-| `/kaggle/input/go-emotions-google-emotions-dataset/` | Raw GoEmotions CSV |
+| `/kaggle/input/notebooks/shivamb/list-of-emotions/` | GoEmotions CSV (notebook input) |
+| `/kaggle/input/go-emotions-google-emotions-dataset/` | GoEmotions CSV (direct dataset) |
 | `/kaggle/working/repo/notebooks/artifacts/processed/` | Processed train/val/test CSVs |
 | `/kaggle/working/repo/notebooks/artifacts/checkpoints/` | HuggingFace epoch checkpoints |
 | `/kaggle/working/repo/notebooks/artifacts/exports/` | Final model for download |
