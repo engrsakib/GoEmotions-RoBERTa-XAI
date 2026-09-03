@@ -1,27 +1,64 @@
 # GoEmotions-RoBERTa Training Pipeline
 
-Professional Python pipeline (replaces `lab_final.ipynb`). Production inference lives in `packages/model/`.
+Professional Python pipeline for training on **Kaggle GPU** or locally.  
+Production inference lives in [`packages/model/`](../packages/model/).
+
+**Repository:** https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git (branch: `main`)
+
+---
+
+## Quick Start (Kaggle GPU) — Recommended
+
+Full step-by-step guide: **[docs/03-kaggle-setup.md](docs/03-kaggle-setup.md)**
+
+### 1. Create Kaggle notebook
+
+- Accelerator: **GPU T4 x2**
+- Internet: **ON**
+- Add dataset: [GoEmotions Google Emotions Dataset](https://www.kaggle.com/datasets/shivamb/go-emotions-google-emotions-dataset)
+
+### 2. Clone main branch and train (one cell)
+
+```python
+import os, subprocess, sys
+
+REPO = "https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git"
+REPO_DIR = "/kaggle/working/repo"
+
+if not os.path.exists(REPO_DIR):
+    subprocess.run(["git", "clone", "--branch", "main", "--depth", "1", REPO, REPO_DIR], check=True)
+
+os.chdir(f"{REPO_DIR}/notebooks")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements-train.txt"], check=True)
+subprocess.run([sys.executable, "kaggle/run_training.py"], check=True)
+```
+
+### 3. Download weights
+
+After training: `artifacts/exports/saved_emotion_model/` → copy to `packages/model/saved_emotion_model/`
+
+---
 
 ## Quick Start (Local)
 
 ```bash
-cd notebooks
+git clone --branch main https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git
+cd GoEmotions-RoBERTa-XAI/notebooks
 pip install -r requirements-train.txt
 python scripts/run_pipeline.py --deploy
 ```
 
-## Quick Start (Kaggle GPU)
+---
 
-1. Enable **GPU T4 x2** and **Internet**
-2. Add dataset: `shivamb/go-emotions-google-emotions-dataset`
-3. Clone repo and run:
+## Dataset
 
-```bash
-git clone https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git /kaggle/working/repo
-cd /kaggle/working/repo/notebooks
-pip install -r requirements-train.txt
-python kaggle/run_training.py
-```
+| Source | Link |
+|--------|------|
+| **Kaggle** | [shivamb/go-emotions-google-emotions-dataset](https://www.kaggle.com/datasets/shivamb/go-emotions-google-emotions-dataset) |
+| **Original** | [GoEmotions — Google Research](https://github.com/google-research/google-research/tree/master/goemotions) |
+| **Local path** | `data/raw/goemotions/` (gitignored) |
+
+---
 
 ## Directory Layout
 
@@ -38,25 +75,30 @@ notebooks/
 │   └── xai/                      # Captum Integrated Gradients
 ├── config/train_config.yaml
 ├── docs/
-│   ├── IEEE_METHODOLOGY.md       # IEEE-format methodology
-│   └── 02-eight-models.md        # Eight recommended models
+│   ├── 03-kaggle-setup.md        # Full Kaggle guide
+│   ├── IEEE_METHODOLOGY.md
+│   └── 02-eight-models.md
 ├── kaggle/
 │   ├── run_training.py           # Kaggle entry point
 │   └── kernel-metadata.json
 └── artifacts/                    # gitignored outputs
 ```
 
+---
+
 ## Pipeline Stages
 
-| Stage | Script flag | Description |
-|-------|-------------|-------------|
+| Stage | Command | Description |
+|-------|---------|-------------|
 | 0 | (auto) | Bootstrap environment |
 | 1 | `--stage data` | Data engineering |
 | 2 | `--stage eda` | Class distribution figure |
 | 3 | `--stage baselines` | M1 LogReg + M2 SVM |
 | 4–5 | `--stage train` | Transformer fine-tune + evaluate |
 | 6 | `--stage xai` | Captum heatmaps (M8) |
-| 7 | `--stage export` | Export + optional `--deploy` |
+| 7 | `--stage export` | Export + `--deploy` |
+
+---
 
 ## Eight Models
 
@@ -72,8 +114,7 @@ notebooks/
 | m8_captum_ig | Captum IG | XAI required |
 
 ```bash
-# Train a specific transformer
-python scripts/run_pipeline.py --model-id m6_deberta_v3 --skip-data --deploy
+python scripts/run_pipeline.py --model-id m4_roberta_focal --deploy
 ```
 
 See [docs/IEEE_METHODOLOGY.md](docs/IEEE_METHODOLOGY.md) and [docs/02-eight-models.md](docs/02-eight-models.md).
