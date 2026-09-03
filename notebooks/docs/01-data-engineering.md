@@ -86,6 +86,12 @@ result = run_data_pipeline()
 print(result["stats"])
 ```
 
+Or via CLI:
+
+```bash
+python scripts/01_data_engineering.py
+```
+
 ## Expected Volumes
 
 | Stage | Approx rows |

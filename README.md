@@ -61,8 +61,12 @@ All application code lives under `packages/` — three packages only: **frontend
 ├── data/
 │   └── raw/
 │       └── goemotions/               # GoEmotions dataset
-├── notebooks/
-│   └── lab_final.ipynb               # training + XAI notebook
+├── notebooks/                        # ML training pipeline
+│   ├── scripts/run_pipeline.py       # main CLI (Stages 0–7)
+│   ├── src/                          # data, training, xai modules
+│   ├── config/train_config.yaml
+│   ├── docs/IEEE_METHODOLOGY.md
+│   └── kaggle/run_training.py        # Kaggle GPU entry point
 ├── scripts/                          # utility scripts
 ├── project-plan/                     # gitignored production checklist
 └── packages/
@@ -231,12 +235,7 @@ pnpm dev:frontend
 
 1. Download GoEmotions and map labels to the 7 target categories.
 2. Tokenize with `roberta-base`, `MAX_LENGTH=128`.
-3. Train baselines (Logistic Regression, SVM) for comparison.
-4. Fine-tune RoBERTa: batch 16, lr `2e-5`, epochs 3–5, weight decay `0.01`.
-5. Track macro F1 and per-class F1; early-stop on macro F1.
-6. Generate token heatmaps with Integrated Gradients (Captum).
-7. Export best checkpoint to `packages/model/saved_emotion_model/`.
-8. Log experiments with W&B or TensorBoard; pin dependencies in `requirements.txt`.
+3. Run pipeline: `cd notebooks && python scripts/run_pipeline.py --deploy`
 
 ## CI
 
