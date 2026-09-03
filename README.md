@@ -134,8 +134,9 @@ All application code lives under `packages/` — three packages only: **frontend
 
 ## Dataset
 
-- **GoEmotions** (Google Research)
-- URL: https://github.com/google-research/google-research/tree/master/goemotions
+- **GoEmotions** (Google Research) — [original source](https://github.com/google-research/google-research/tree/master/goemotions)
+- **Kaggle dataset:** [shivamb/go-emotions-google-emotions-dataset](https://www.kaggle.com/datasets/shivamb/go-emotions-google-emotions-dataset)
+- **GitHub repo:** [engrsakib/GoEmotions-RoBERTa-XAI](https://github.com/engrsakib/GoEmotions-RoBERTa-XAI)
 - Local path: `data/raw/goemotions/`
 
 ## Model Weights
@@ -233,9 +234,39 @@ pnpm dev:frontend
 
 ## Kaggle / Training Guidelines
 
-1. Download GoEmotions and map labels to the 7 target categories.
-2. Tokenize with `roberta-base`, `MAX_LENGTH=128`.
-3. Run pipeline: `cd notebooks && python scripts/run_pipeline.py --deploy`
+**Repository:** https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git (branch: `main`)  
+**Full Kaggle guide:** [notebooks/docs/03-kaggle-setup.md](notebooks/docs/03-kaggle-setup.md)  
+**Dataset:** [GoEmotions on Kaggle](https://www.kaggle.com/datasets/shivamb/go-emotions-google-emotions-dataset)
+
+### Quick start on Kaggle (GPU T4 x2, Internet ON)
+
+1. Add dataset: `shivamb/go-emotions-google-emotions-dataset`
+2. Paste in a Kaggle notebook cell:
+
+```python
+import os, subprocess, sys
+
+REPO = "https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git"
+REPO_DIR = "/kaggle/working/repo"
+
+if not os.path.exists(REPO_DIR):
+    subprocess.run(["git", "clone", "--branch", "main", "--depth", "1", REPO, REPO_DIR], check=True)
+
+os.chdir(f"{REPO_DIR}/notebooks")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements-train.txt"], check=True)
+subprocess.run([sys.executable, "kaggle/run_training.py"], check=True)
+```
+
+3. Download `artifacts/exports/saved_emotion_model/` and copy to `packages/model/saved_emotion_model/`
+
+### Local training
+
+```bash
+git clone --branch main https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git
+cd GoEmotions-RoBERTa-XAI/notebooks
+pip install -r requirements-train.txt
+python scripts/run_pipeline.py --deploy
+```
 
 ## CI
 

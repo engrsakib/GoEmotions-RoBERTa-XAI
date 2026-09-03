@@ -2,9 +2,12 @@
 
 ## Source
 
-- **Dataset:** [GoEmotions](https://github.com/google-research/google-research/tree/master/goemotions) (Google Research)
-- **Kaggle mirror:** `shivamb/go-emotions-google-emotions-dataset`
-- **Local path:** `data/raw/goemotions/` (gitignored)
+| Resource | Link |
+|----------|------|
+| **Original dataset** | [GoEmotions — Google Research](https://github.com/google-research/google-research/tree/master/goemotions) |
+| **Kaggle mirror (recommended)** | [shivamb/go-emotions-google-emotions-dataset](https://www.kaggle.com/datasets/shivamb/go-emotions-google-emotions-dataset) |
+| **Training repo** | [engrsakib/GoEmotions-RoBERTa-XAI](https://github.com/engrsakib/GoEmotions-RoBERTa-XAI) |
+| **Local path** | `data/raw/goemotions/` (gitignored) |
 
 ## Files
 

@@ -1,33 +1,31 @@
 # Kaggle Training Setup
 
-## Option A: Run script (recommended)
+**Full guide:** [docs/03-kaggle-setup.md](../docs/03-kaggle-setup.md)
 
-1. Kaggle Notebook → **GPU T4 x2**, **Internet ON**
-2. Add dataset: `shivamb/go-emotions-google-emotions-dataset`
-3. Run:
+## Quick commands (main branch)
 
 ```python
-!git clone https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git /kaggle/working/repo
-%cd /kaggle/working/repo/notebooks
-!pip install -q -r requirements-train.txt
-!python kaggle/run_training.py
+# Clone + install + train (paste in Kaggle notebook)
+import os, subprocess, sys
+
+REPO = "https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git"
+REPO_DIR = "/kaggle/working/repo"
+
+if not os.path.exists(REPO_DIR):
+    subprocess.run(["git", "clone", "--branch", "main", "--depth", "1", REPO, REPO_DIR], check=True)
+
+os.chdir(f"{REPO_DIR}/notebooks")
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements-train.txt"], check=True)
+subprocess.run([sys.executable, "kaggle/run_training.py"], check=True)
 ```
 
-## Option B: Kaggle CLI push
+## Dataset
+
+Add as Kaggle Input: [GoEmotions Google Emotions Dataset](https://www.kaggle.com/datasets/shivamb/go-emotions-google-emotions-dataset)
+
+## Kaggle CLI push (optional)
 
 ```bash
 cd notebooks/kaggle
 kaggle kernels push -p .
 ```
-
-Uses [`kernel-metadata.json`](kernel-metadata.json) pointing to [`run_training.py`](run_training.py).
-
-## Option C: Full pipeline CLI
-
-```bash
-python scripts/run_pipeline.py --deploy --model-id m4_roberta_focal
-```
-
-## Output
-
-Download `artifacts/exports/saved_emotion_model/` after training completes.
