@@ -15,6 +15,7 @@ GOEMOTIONS_DATASET_SLUG = "shivamb/go-emotions-google-emotions-dataset"
 # Preferred Kaggle Input mount paths (checked before a full /kaggle/input walk).
 KAGGLE_KNOWN_INPUT_DIRS = (
     KAGGLE_INPUT_ROOT / "notebooks" / "shivamb" / "list-of-emotions",
+    KAGGLE_INPUT_ROOT / "list-of-emotions",
     KAGGLE_INPUT_ROOT / "go-emotions-google-emotions-dataset",
 )
 
@@ -45,13 +46,37 @@ def _emotion_column_count(columns: set[str]) -> int:
     return sum(1 for marker in GOEMOTIONS_EMOTION_MARKERS if marker in columns)
 
 
-def _looks_like_goemotions(df: pd.DataFrame) -> bool:
-    columns = set(df.columns)
+def _looks_like_goemotions_columns(columns: set[str]) -> bool:
     if not _has_text_column(columns):
         return False
     if _emotion_column_count(columns) >= 3:
         return True
     return "id" in columns and "example_very_unclear" in columns
+
+
+def _looks_like_goemotions(df: pd.DataFrame) -> bool:
+    return _looks_like_goemotions_columns(set(df.columns))
+
+
+def _peek_columns(path: Path) -> set[str] | None:
+    sep = "\t" if path.suffix.lower() == ".tsv" else ","
+    try:
+        header = pd.read_csv(path, sep=sep, nrows=0)
+    except (OSError, pd.errors.ParserError, UnicodeDecodeError):
+        return None
+    return set(header.columns)
+
+
+def _schema_rejection_reason(columns: set[str] | None) -> str:
+    if columns is None:
+        return "unreadable"
+    if not _has_text_column(columns):
+        return "missing text/comment_text column"
+    if _emotion_column_count(columns) < 3 and not (
+        "id" in columns and "example_very_unclear" in columns
+    ):
+        return "missing GoEmotions emotion/id columns"
+    return "unknown schema mismatch"
 
 
 def _normalize_goemotions_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -95,18 +120,42 @@ def _discover_table_files(root: Path) -> list[Path]:
 
 
 def _load_from_path(path: Path, source_label: str) -> pd.DataFrame | None:
+    columns = _peek_columns(path)
+    if columns is None:
+        print(f"Skipping unreadable file {path}")
+        return None
+    if not _looks_like_goemotions_columns(columns):
+        return None
+
     try:
         df = _read_table(path)
     except (OSError, pd.errors.ParserError, UnicodeDecodeError) as exc:
         print(f"Skipping unreadable file {path}: {exc}")
         return None
 
-    if not _looks_like_goemotions(df):
-        return None
-
     df = _normalize_goemotions_df(df)
     print(f"Loaded from {source_label}: {path} shape={df.shape}")
     return df
+
+
+def _log_kaggle_discovery_summary(candidates: list[Path]) -> None:
+    if not candidates:
+        print(f"No CSV/TSV files found under {KAGGLE_INPUT_ROOT}")
+        return
+
+    print(f"Discovered {len(candidates)} CSV/TSV file(s) under {KAGGLE_INPUT_ROOT}:")
+    for path in candidates:
+        print(f"  - {path}")
+
+    print("Rejected candidates:")
+    for path in candidates:
+        columns = _peek_columns(path)
+        reason = _schema_rejection_reason(columns)
+        print(f"  - {path}: {reason}")
+
+    print("Expected mount paths (attach GoEmotions as Input):")
+    for directory in KAGGLE_KNOWN_INPUT_DIRS:
+        print(f"  - {directory}/")
 
 
 def _load_from_known_kaggle_dirs() -> pd.DataFrame | None:
@@ -131,7 +180,7 @@ def _load_from_kaggle_input() -> pd.DataFrame | None:
 
     candidates = _discover_table_files(KAGGLE_INPUT_ROOT)
     if not candidates:
-        print(f"No CSV/TSV files found under {KAGGLE_INPUT_ROOT}")
+        _log_kaggle_discovery_summary([])
         return None
 
     # Prefer go-emotions paths, then validate schema before loading full file.
@@ -156,6 +205,7 @@ def _load_from_kaggle_input() -> pd.DataFrame | None:
             if df is not None:
                 return df
 
+    _log_kaggle_discovery_summary(candidates)
     return None
 
 
@@ -193,14 +243,15 @@ def _load_from_kagglehub() -> pd.DataFrame:
 
 
 def _kaggle_dataset_missing_error() -> FileNotFoundError:
-    expected = KAGGLE_KNOWN_INPUT_DIRS[0]
+    expected_paths = "\n".join(f"  - {directory}/" for directory in KAGGLE_KNOWN_INPUT_DIRS)
     return FileNotFoundError(
         "GoEmotions dataset not found on Kaggle.\n"
         "Fix: In the notebook sidebar, click Add Input and attach either:\n"
         f"  {GOEMOTIONS_DATASET_SLUG}\n"
         "  shivamb/list-of-emotions (notebook with GoEmotions input)\n"
         "Then Save Version and re-run.\n"
-        f"Expected mount path (example): {expected}/\n"
+        "Expected mount paths:\n"
+        f"{expected_paths}\n"
         "Alternatively, place a GoEmotions CSV under:\n"
         f"  {DATA_RAW_DIR}"
     )

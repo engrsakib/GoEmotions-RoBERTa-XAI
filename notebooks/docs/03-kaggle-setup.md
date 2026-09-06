@@ -51,11 +51,12 @@ The pipeline auto-loads from `/kaggle/input/` when the dataset is attached. **Ka
 After adding, data appears at one of:
 
 ```
-/kaggle/input/notebooks/shivamb/list-of-emotions/   ← notebook input (common)
-/kaggle/input/go-emotions-google-emotions-dataset/  ← direct dataset
+/kaggle/input/list-of-emotions/
+/kaggle/input/notebooks/shivamb/list-of-emotions/
+/kaggle/input/go-emotions-google-emotions-dataset/
 ```
 
-The loader checks **`/kaggle/input/notebooks/shivamb/list-of-emotions`** first.
+The loader checks these paths in order, then recursively searches `/kaggle/input/` for GoEmotions CSV/TSV files.
 
 ---
 
@@ -240,6 +241,7 @@ print("\nDone! Weights at: notebooks/artifacts/exports/saved_emotion_model/")
 |------|---------|
 | `/kaggle/working/repo/` | Cloned GitHub repo (main branch) |
 | `/kaggle/working/repo/notebooks/` | Training code root |
+| `/kaggle/input/list-of-emotions/` | GoEmotions CSV (direct slug mount) |
 | `/kaggle/input/notebooks/shivamb/list-of-emotions/` | GoEmotions CSV (notebook input) |
 | `/kaggle/input/go-emotions-google-emotions-dataset/` | GoEmotions CSV (direct dataset) |
 | `/kaggle/working/repo/notebooks/artifacts/processed/` | Processed train/val/test CSVs |
@@ -253,6 +255,7 @@ print("\nDone! Weights at: notebooks/artifacts/exports/saved_emotion_model/")
 | Issue | Fix |
 |-------|-----|
 | Session disconnected | Checkpoints saved each epoch — re-run with `--skip-data --stage train` |
+| `train.csv` not found with `--skip-data` | Pipeline auto-runs Stage 1 when processed splits are missing; ensure GoEmotions Input is attached |
 | Out of memory (OOM) | Edit `config/train_config.yaml`: `batch_size: 8`, `gradient_accumulation_steps: 2` |
 | Slow on CPU | Ensure GPU T4 x2 is selected in notebook settings |
 | `git clone` fails | Turn **Internet ON** in notebook settings |

@@ -31,7 +31,7 @@ import torch
 from transformers import AutoTokenizer
 
 from src.bootstrap.environment import bootstrap, is_kaggle
-from src.data.pipeline import load_config, load_processed_splits, run_data_pipeline
+from src.data.pipeline import load_config, load_processed_splits, processed_splits_exist, run_data_pipeline
 from src.paths import EXPORTS_DIR, ensure_artifact_dirs
 from src.training.baselines import run_all_baselines
 from src.training.model_registry import apply_model_to_config, default_transformer_id, get_model
@@ -60,9 +60,11 @@ def stage_bootstrap() -> None:
 
 
 def stage_data(config: dict, skip: bool) -> tuple:
-    if skip:
+    if skip and processed_splits_exist():
         train_df, val_df, test_df = load_processed_splits()
         return train_df, val_df, test_df, {}
+    if skip:
+        print("WARNING: --skip-data set but processed splits missing; running data pipeline.")
     result = run_data_pipeline(config)
     return result["train_df"], result["val_df"], result["test_df"], result["stats"]
 
