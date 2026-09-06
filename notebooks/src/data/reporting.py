@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 
-from src.data.label_mapping import ID2LABEL, TARGET_ID_TO_EMOTIONS
+from src.data.label_mapping import ID2LABEL, LABEL2ID, TARGET_ID_TO_EMOTIONS
 
 logger = logging.getLogger(__name__)
 
