@@ -10,6 +10,7 @@ import yaml
 from src.data.clean import clean_dataframe
 from src.data.label_mapping import apply_label_mapping, label_map_payload
 from src.data.load import audit_dataframe, load_raw_dataframe
+from src.data.reporting import load_stats_from_disk, log_pipeline_stats
 from src.data.split import check_class_balance, check_leakage, stratified_split
 from src.paths import CONFIG_DIR, PROCESSED_DIR, ensure_artifact_dirs
 
@@ -76,7 +77,8 @@ def load_or_build_processed_splits(config: dict | None = None, *, force_rebuild:
 
     if not force_rebuild and processed_splits_exist():
         train_df, val_df, test_df = load_processed_splits()
-        return train_df, val_df, test_df, {}
+        cached_stats = load_stats_from_disk(PROCESSED_DIR) or {}
+        return train_df, val_df, test_df, cached_stats
 
     result = run_data_pipeline(config)
     return result["train_df"], result["val_df"], result["test_df"], result["stats"]
@@ -118,9 +120,8 @@ def run_data_pipeline(config: dict | None = None) -> dict:
     }
 
     output_dir = export_splits(train_df, val_df, test_df, stats)
+    log_pipeline_stats(stats)
     print(f"Exported processed data to {output_dir}")
-    print(f"Leakage check passed: {leakage['no_leakage']}")
-    print(f"Class balance within tolerance: {balance['within_tolerance']}")
 
     return {
         "train_df": train_df,

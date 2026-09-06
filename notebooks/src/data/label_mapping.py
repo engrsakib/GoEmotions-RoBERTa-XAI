@@ -52,10 +52,26 @@ PRIORITY_TARGET_IDS = [0, 1, 2, 3, 4, 5, 6]
 GOEMOTIONS_EMOTION_COLUMNS = list(EMOTION_TO_TARGET.keys())
 
 
+def counts_with_label_names(counts: dict) -> dict[str, int]:
+    return {
+        ID2LABEL[int(class_id)]: int(count)
+        for class_id, count in counts.items()
+    }
+
+
+def percentages_with_label_names(percentages: dict) -> dict[str, float]:
+    return {
+        ID2LABEL[int(class_id)]: float(pct)
+        for class_id, pct in percentages.items()
+    }
+
+
 def label_map_payload() -> dict:
     return {
         "id2label": {str(k): v for k, v in ID2LABEL.items()},
         "label2id": LABEL2ID,
+        "target_id_to_emotions": {str(k): v for k, v in TARGET_ID_TO_EMOTIONS.items()},
+        "schema_version": "1.0",
     }
 
 
@@ -91,13 +107,18 @@ def apply_label_mapping(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     working["encoded_label"] = working["encoded_label"].astype(int)
     working = working.reset_index(drop=True)
 
+    class_counts = working["encoded_label"].value_counts().sort_index().to_dict()
+    class_percentages = (
+        working["encoded_label"].value_counts(normalize=True).sort_index() * 100
+    ).round(4).to_dict()
+
     log = {
         "initial_rows": initial_rows,
         "remaining_rows": len(working),
         "dropped_rows": initial_rows - len(working),
-        "class_counts": working["encoded_label"].value_counts().sort_index().to_dict(),
-        "class_percentages": (
-            working["encoded_label"].value_counts(normalize=True).sort_index() * 100
-        ).round(4).to_dict(),
+        "class_counts": class_counts,
+        "class_percentages": class_percentages,
+        "class_counts_named": counts_with_label_names(class_counts),
+        "class_percentages_named": percentages_with_label_names(class_percentages),
     }
     return working, log

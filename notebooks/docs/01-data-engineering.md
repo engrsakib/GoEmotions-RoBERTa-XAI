@@ -10,12 +10,13 @@ production inference.
 
 ### 1. Load (`src/data/load.py`)
 
-- **Kaggle input:** checks `/kaggle/input/notebooks/shivamb/list-of-emotions/` first, then walks `/kaggle/input/` for GoEmotions CSV/TSV
+- **Kaggle input:** checks known mount paths first, then walks `/kaggle/input/` for GoEmotions CSV/TSV
 - **Local:** `data/raw/goemotions/*.csv`
 - **KaggleHub:** local development only — **not used on Kaggle** (avoids BackendError)
-- **Official splits:** if `train.tsv`, `dev.tsv`, `test.tsv` exist, load separately
 
-Audit outputs: row count, null counts, `example_very_unclear` rate, text length stats.
+**Split strategy:** the default pipeline uses a **custom stratified 80/10/10 split** on the merged CSV. The helper `load_official_splits()` exists for official `train.tsv` / `dev.tsv` / `test.tsv` files but is **not wired into `run_data_pipeline()`** today.
+
+Audit outputs (logged via `src/data/reporting.py`): row count, null counts, `example_very_unclear` rate, text length stats.
 
 ### 2. Label Mapping (`src/data/label_mapping.py`)
 
@@ -65,8 +66,33 @@ Written to `notebooks/artifacts/processed/`:
 | `train.csv` | Training split |
 | `validation.csv` | Validation split |
 | `test.csv` | Test split |
-| `label_map.json` | id2label / label2id (matches production) |
-| `data_stats.json` | Counts, percentages, cleaning log |
+| `label_map.json` | id2label, label2id, target_id_to_emotions, schema_version |
+| `data_stats.json` | Counts, percentages, cleaning log, audit metadata |
+
+## Dataset Metadata Logging
+
+Human-readable logs are emitted by [`src/data/reporting.py`](../src/data/reporting.py):
+
+- **Label schema** — 7 production classes and source GoEmotions columns
+- **Raw audit** — row count, column count, unclear rate, avg text length
+- **Mapping / cleaning / split** — row deltas and per-class counts with label names
+- **Validation** — leakage check and class balance tolerance
+
+On CLI runs, metadata prints during Stage 1. With `--skip-data`, stats are **replayed from `data_stats.json`**.
+
+```bash
+python scripts/run_pipeline.py --skip-bootstrap --stage data
+```
+
+Or programmatically:
+
+```python
+from src.data.pipeline import run_data_pipeline
+from src.data.reporting import log_pipeline_stats
+
+result = run_data_pipeline()
+log_pipeline_stats(result["stats"])
+```
 
 ## Validation Gates
 
@@ -77,16 +103,15 @@ Before training, verify:
 - [ ] Minimum 100 training samples per class (watch class 4 desire)
 - [ ] `label_map.json` matches `packages/model/saved_emotion_model/label_map.json`
 
-## Run from Notebook
+## Run from CLI
 
-```python
-from src.data.pipeline import run_data_pipeline
+Primary entry point (replaces `lab_final.ipynb`):
 
-result = run_data_pipeline()
-print(result["stats"])
+```bash
+python scripts/run_pipeline.py --skip-bootstrap --stage data
 ```
 
-Or via CLI:
+Data-only script:
 
 ```bash
 python scripts/01_data_engineering.py

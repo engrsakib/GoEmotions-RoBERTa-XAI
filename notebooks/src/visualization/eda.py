@@ -40,6 +40,12 @@ def summarize_text_lengths(train_df: pd.DataFrame) -> dict:
 
 
 def run_eda(train_df: pd.DataFrame) -> dict:
+    counts = train_df["encoded_label"].value_counts().sort_index()
+    print("\n=== Train Class Distribution ===")
+    for class_id, count in counts.items():
+        pct = 100.0 * count / len(train_df)
+        print(f"  {ID2LABEL[int(class_id)]:40s} {count:6d}  ({pct:5.2f}%)")
+
     figure_path = plot_class_distribution(train_df)
     length_stats = summarize_text_lengths(train_df)
     print(f"EDA figure saved: {figure_path}")

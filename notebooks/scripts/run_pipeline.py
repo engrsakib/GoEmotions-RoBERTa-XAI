@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import shutil
 import sys
 from pathlib import Path
@@ -32,7 +33,8 @@ from transformers import AutoTokenizer
 
 from src.bootstrap.environment import bootstrap, is_kaggle
 from src.data.pipeline import load_config, load_processed_splits, processed_splits_exist, run_data_pipeline
-from src.paths import EXPORTS_DIR, ensure_artifact_dirs
+from src.data.reporting import load_stats_from_disk, log_pipeline_stats
+from src.paths import EXPORTS_DIR, PROCESSED_DIR, ensure_artifact_dirs
 from src.training.baselines import run_all_baselines
 from src.training.model_registry import apply_model_to_config, default_transformer_id, get_model
 from src.training.trainer_setup import build_trainer, evaluate_on_test, export_model, prepare_hf_datasets
@@ -62,11 +64,23 @@ def stage_bootstrap() -> None:
 def stage_data(config: dict, skip: bool) -> tuple:
     if skip and processed_splits_exist():
         train_df, val_df, test_df = load_processed_splits()
-        return train_df, val_df, test_df, {}
+        cached_stats = load_stats_from_disk(PROCESSED_DIR) or {}
+        return train_df, val_df, test_df, cached_stats
     if skip:
         print("WARNING: --skip-data set but processed splits missing; running data pipeline.")
     result = run_data_pipeline(config)
     return result["train_df"], result["val_df"], result["test_df"], result["stats"]
+
+
+def print_pipeline_stats(stats: dict) -> None:
+    if stats:
+        log_pipeline_stats(stats)
+        return
+    cached = load_stats_from_disk(PROCESSED_DIR)
+    if cached:
+        log_pipeline_stats(cached)
+    else:
+        print("WARNING: No stats in memory or data_stats.json")
 
 
 def maybe_subsample(train_df, val_df, args):
@@ -80,6 +94,8 @@ def maybe_subsample(train_df, val_df, args):
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     parser = argparse.ArgumentParser(description="GoEmotions-RoBERTa training pipeline")
     parser.add_argument("--stage", choices=["all", "data", "eda", "baselines", "train", "evaluate", "xai", "export"], default="all")
     parser.add_argument("--skip-bootstrap", action="store_true")
@@ -111,8 +127,8 @@ def main() -> None:
     if run_all or args.stage == "data":
         print("\n=== Stage 1: Data Engineering ===")
         train_df, val_df, test_df, stats = stage_data(config, args.skip_data)
-        if stats:
-            print(json.dumps({k: v for k, v in stats.items() if k != "audit"}, indent=2, default=str))
+        if args.skip_data:
+            print_pipeline_stats(stats)
         print(f"Train={len(train_df)} Val={len(val_df)} Test={len(test_df)}")
     else:
         train_df, val_df, test_df, _ = stage_data(config, skip=True)
