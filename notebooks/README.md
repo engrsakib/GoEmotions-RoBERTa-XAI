@@ -20,14 +20,15 @@ Full step-by-step guide: **[docs/03-kaggle-setup.md](docs/03-kaggle-setup.md)**
 ### 2. Clone main branch and train (one cell)
 
 ```python
-import os, subprocess, sys
+import os, shutil, subprocess, sys
 
 REPO = "https://github.com/engrsakib/GoEmotions-RoBERTa-XAI.git"
 REPO_DIR = "/kaggle/working/repo"
 
-if not os.path.exists(REPO_DIR):
-    subprocess.run(["git", "clone", "--branch", "main", "--depth", "1", REPO, REPO_DIR], check=True)
+if os.path.exists(REPO_DIR):
+    shutil.rmtree(REPO_DIR)
 
+subprocess.run(["git", "clone", "--branch", "main", "--depth", "1", REPO, REPO_DIR], check=True)
 os.chdir(f"{REPO_DIR}/notebooks")
 subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements-train.txt"], check=True)
 subprocess.run([sys.executable, "kaggle/run_training.py"], check=True)
