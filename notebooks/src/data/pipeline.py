@@ -43,6 +43,45 @@ def export_splits(
     return output_dir
 
 
+PROCESSED_SPLIT_FILES = ("train.csv", "validation.csv", "test.csv", "label_map.json")
+
+
+def processed_splits_exist(processed_dir: Path | None = None) -> bool:
+    processed_dir = processed_dir or PROCESSED_DIR
+    return all((processed_dir / name).is_file() for name in PROCESSED_SPLIT_FILES)
+
+
+def load_processed_splits(processed_dir: Path | None = None):
+    import pandas as pd
+
+    processed_dir = processed_dir or PROCESSED_DIR
+    processed_dir.mkdir(parents=True, exist_ok=True)
+
+    missing = [name for name in PROCESSED_SPLIT_FILES if not (processed_dir / name).is_file()]
+    if missing:
+        raise FileNotFoundError(
+            f"Processed splits missing in {processed_dir}: {', '.join(missing)}. "
+            "Run run_data_pipeline() or scripts/run_pipeline.py --stage data."
+        )
+
+    train_df = pd.read_csv(processed_dir / "train.csv")
+    val_df = pd.read_csv(processed_dir / "validation.csv")
+    test_df = pd.read_csv(processed_dir / "test.csv")
+    return train_df, val_df, test_df
+
+
+def load_or_build_processed_splits(config: dict | None = None, *, force_rebuild: bool = False) -> tuple:
+    ensure_artifact_dirs()
+    config = config or load_config()
+
+    if not force_rebuild and processed_splits_exist():
+        train_df, val_df, test_df = load_processed_splits()
+        return train_df, val_df, test_df, {}
+
+    result = run_data_pipeline(config)
+    return result["train_df"], result["val_df"], result["test_df"], result["stats"]
+
+
 def run_data_pipeline(config: dict | None = None) -> dict:
     ensure_artifact_dirs()
     config = config or load_config()
@@ -92,11 +131,3 @@ def run_data_pipeline(config: dict | None = None) -> dict:
     }
 
 
-def load_processed_splits(processed_dir: Path | None = None):
-    import pandas as pd
-
-    processed_dir = processed_dir or PROCESSED_DIR
-    train_df = pd.read_csv(processed_dir / "train.csv")
-    val_df = pd.read_csv(processed_dir / "validation.csv")
-    test_df = pd.read_csv(processed_dir / "test.csv")
-    return train_df, val_df, test_df
