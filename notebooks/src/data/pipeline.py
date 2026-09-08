@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from src.data.balance import balance_train_df
 from src.data.clean import clean_dataframe
 from src.data.label_mapping import apply_label_mapping, label_map_payload
 from src.data.load import audit_dataframe, load_raw_dataframe
@@ -105,6 +106,17 @@ def run_data_pipeline(config: dict | None = None) -> dict:
         val_ratio=config.get("val_ratio", 0.1),
     )
 
+    balance_strategy = config.get("balance_strategy", "none")
+    if balance_strategy != "none":
+        train_df, train_balance_log = balance_train_df(
+            train_df,
+            strategy=balance_strategy,
+            target_neutral_pct=config.get("target_neutral_pct", 0.27),
+            random_seed=config.get("balance_random_seed", config.get("random_seed", 42)),
+        )
+    else:
+        train_balance_log = {"strategy": "none"}
+
     leakage = check_leakage(train_df, val_df, test_df)
     balance = check_class_balance(split_log)
 
@@ -116,6 +128,7 @@ def run_data_pipeline(config: dict | None = None) -> dict:
         "split": split_log,
         "leakage": leakage,
         "balance": balance,
+        "train_balance": train_balance_log,
         "min_train_samples_per_class": int(min_train_per_class),
     }
 

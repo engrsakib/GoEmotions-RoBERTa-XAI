@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.paths import DATA_RAW_DIR, IS_KAGGLE
+from src.paths import DATA_RAW_DIR, IS_KAGGLE, NOTEBOOKS_DIR
 
 KAGGLE_INPUT_ROOT = Path("/kaggle/input")
 GOEMOTIONS_DATASET_SLUG = "shivamb/go-emotions-google-emotions-dataset"
@@ -209,6 +209,13 @@ def _load_from_kaggle_input() -> pd.DataFrame | None:
     return None
 
 
+def _load_from_notebooks_dataset() -> pd.DataFrame | None:
+    dataset_csv = NOTEBOOKS_DIR / "dataset" / "go_emotions_dataset.csv"
+    if not dataset_csv.is_file():
+        return None
+    return _load_from_path(dataset_csv, "notebooks/dataset")
+
+
 def _load_from_local() -> pd.DataFrame | None:
     if not DATA_RAW_DIR.exists():
         return None
@@ -273,13 +280,18 @@ def load_raw_dataframe() -> pd.DataFrame:
       1. Known Kaggle paths (e.g. /kaggle/input/notebooks/shivamb/list-of-emotions)
       2. Full /kaggle/input/ walk (prefer go-emotions files)
       3. data/raw/goemotions/
-      4. KaggleHub — local environments only (never on Kaggle)
+      4. notebooks/dataset/go_emotions_dataset.csv
+      5. KaggleHub — local environments only (never on Kaggle)
     """
     df = _load_from_kaggle_input()
     if df is not None:
         return df
 
     df = _load_from_local()
+    if df is not None:
+        return df
+
+    df = _load_from_notebooks_dataset()
     if df is not None:
         return df
 

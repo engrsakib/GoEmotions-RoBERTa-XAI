@@ -1,4 +1,4 @@
-"""Focal Loss and custom HuggingFace Trainer."""
+"""Focal Loss, Weighted CE, and custom HuggingFace Trainers."""
 
 from __future__ import annotations
 
@@ -23,15 +23,40 @@ class FocalLoss(torch.nn.Module):
         return focal.mean()
 
 
-def compute_class_weights(labels, num_classes: int) -> torch.Tensor:
+def compute_class_weights(
+    labels,
+    num_classes: int,
+    mode: str = "inverse_freq",
+) -> torch.Tensor | None:
+    """
+    Compute per-class weights for loss functions.
+
+    Modes:
+      - inverse_freq: standard balanced weights (N / (K * n_c))
+      - sqrt_inverse: sqrt of inverse_freq (less aggressive)
+      - none: return None (uniform weighting)
+    """
+    if mode == "none":
+        return None
+
     counts = torch.bincount(torch.tensor(labels, dtype=torch.long), minlength=num_classes).float()
     counts = counts.clamp(min=1.0)
     weights = counts.sum() / (num_classes * counts)
+
+    if mode == "sqrt_inverse":
+        weights = torch.sqrt(weights)
+
     return weights / weights.sum() * num_classes
 
 
 class FocalLossTrainer(Trainer):
-    def __init__(self, *args, focal_gamma: float = 2.0, class_weights: torch.Tensor | None = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        focal_gamma: float = 2.0,
+        class_weights: torch.Tensor | None = None,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.focal_loss = FocalLoss(gamma=focal_gamma, alpha=class_weights)
 
@@ -39,4 +64,20 @@ class FocalLossTrainer(Trainer):
         labels = inputs.pop("labels")
         outputs = model(**inputs)
         loss = self.focal_loss(outputs.logits, labels)
+        return (loss, outputs) if return_outputs else loss
+
+
+class WeightedCETrainer(Trainer):
+    def __init__(self, *args, class_weights: torch.Tensor | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        loss = F.cross_entropy(
+            outputs.logits,
+            labels,
+            weight=self.class_weights,
+        )
         return (loss, outputs) if return_outputs else loss

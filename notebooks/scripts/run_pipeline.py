@@ -24,6 +24,8 @@ import shutil
 import sys
 from pathlib import Path
 
+import numpy as np
+
 NOTEBOOKS_DIR = Path(__file__).resolve().parent.parent
 if str(NOTEBOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(NOTEBOOKS_DIR))
@@ -32,12 +34,22 @@ import torch
 from transformers import AutoTokenizer
 
 from src.bootstrap.environment import bootstrap, is_kaggle
-from src.data.pipeline import load_config, load_processed_splits, processed_splits_exist, run_data_pipeline
+from src.data.pipeline import (
+    load_config,
+    load_processed_splits,
+    processed_splits_exist,
+    run_data_pipeline,
+)
 from src.data.reporting import load_stats_from_disk, log_pipeline_stats
 from src.paths import EXPORTS_DIR, PROCESSED_DIR, ensure_artifact_dirs
 from src.training.baselines import run_all_baselines
 from src.training.model_registry import apply_model_to_config, default_transformer_id, get_model
-from src.training.trainer_setup import build_trainer, evaluate_on_test, export_model, prepare_hf_datasets
+from src.training.trainer_setup import (
+    build_trainer,
+    evaluate_with_threshold_tuning,
+    export_model,
+    prepare_hf_datasets,
+)
 from src.visualization.eda import run_eda
 from src.xai.captum_ig import explain_samples
 
@@ -61,7 +73,10 @@ def stage_bootstrap() -> None:
     print(f"Stage 0 | notebooks={nb} | kaggle={is_kaggle()}")
 
 
-def stage_data(config: dict, skip: bool) -> tuple:
+def stage_data(config: dict, skip: bool, force_rebuild: bool = False) -> tuple:
+    if force_rebuild:
+        result = run_data_pipeline(config)
+        return result["train_df"], result["val_df"], result["test_df"], result["stats"]
     if skip and processed_splits_exist():
         train_df, val_df, test_df = load_processed_splits()
         cached_stats = load_stats_from_disk(PROCESSED_DIR) or {}
@@ -106,6 +121,7 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--max-train-samples", type=int, default=None)
     parser.add_argument("--max-val-samples", type=int, default=None)
+    parser.add_argument("--force-data", action="store_true", help="Rebuild processed splits (schema v2 / balancing)")
     args = parser.parse_args()
 
     if not args.skip_bootstrap:
@@ -126,12 +142,12 @@ def main() -> None:
     # Stage 1: Data Engineering
     if run_all or args.stage == "data":
         print("\n=== Stage 1: Data Engineering ===")
-        train_df, val_df, test_df, stats = stage_data(config, args.skip_data)
+        train_df, val_df, test_df, stats = stage_data(config, args.skip_data, force_rebuild=args.force_data)
         if args.skip_data:
             print_pipeline_stats(stats)
         print(f"Train={len(train_df)} Val={len(val_df)} Test={len(test_df)}")
     else:
-        train_df, val_df, test_df, _ = stage_data(config, skip=True)
+        train_df, val_df, test_df, _ = stage_data(config, skip=True, force_rebuild=False)
 
     train_df, val_df = maybe_subsample(train_df, val_df, args)
 
@@ -142,6 +158,10 @@ def main() -> None:
 
     # Stage 3: Baselines (M1, M2)
     baseline_results = {}
+    eval_result = None
+    trainer = None
+    tokenizer = None
+    model = None
     if run_all or args.stage == "baselines":
         print("\n=== Stage 3: Baselines (M1–M2) ===")
         baseline_results = run_all_baselines(
@@ -174,17 +194,32 @@ def main() -> None:
             trainer.train()
 
         print("\n=== Stage 5: Evaluation ===")
-        test_result = evaluate_on_test(trainer, test_ds)
-        roberta_f1 = test_result["metrics"]["macro_f1"]
-        print(f"{model_id} test macro-F1: {roberta_f1:.4f}")
-        print(test_result["classification_report"])
+        eval_result = evaluate_with_threshold_tuning(
+            trainer, val_ds, test_ds, config=config
+        )
+        roberta_f1 = eval_result["test_metrics"]["macro_f1"]
+        roberta_f1_argmax = eval_result["test_metrics_argmax"]["macro_f1"]
+        print(f"{model_id} test macro-F1 (thresholded): {roberta_f1:.4f}")
+        print(f"{model_id} test macro-F1 (argmax):       {roberta_f1_argmax:.4f}")
+        print(f"Val-test macro-F1 gap: {eval_result['val_test_macro_f1_gap']:.4f}")
+        if eval_result.get("thresholds"):
+            print(f"Per-class thresholds: {eval_result['thresholds']}")
+        print(eval_result["classification_report"])
 
         metrics_path = EXPORTS_DIR / "training_metrics.json"
         payload = {
             "model_id": model_id,
             "model_name": config["model_name"],
+            "loss_type": config.get("loss_type", "focal"),
+            "balance_strategy": config.get("balance_strategy", "none"),
             "transformer_test_macro_f1": roberta_f1,
-            "test_metrics": test_result["metrics"],
+            "val_metrics": eval_result["val_metrics"],
+            "test_metrics_argmax": eval_result["test_metrics_argmax"],
+            "test_metrics_thresholded": eval_result["test_metrics_thresholded"],
+            "test_metrics": eval_result["test_metrics"],
+            "val_test_macro_f1_gap": eval_result["val_test_macro_f1_gap"],
+            "thresholds": eval_result.get("thresholds"),
+            "threshold_log": eval_result.get("threshold_log"),
         }
         if baseline_results:
             payload["baselines"] = {k: v["metrics"]["macro_f1"] for k, v in baseline_results.items()}
@@ -206,8 +241,21 @@ def main() -> None:
     # Stage 7: Export
     if run_all or args.stage == "export":
         print("\n=== Stage 7: Export ===")
+        if trainer is None:
+            raise RuntimeError("Export requires a trained model. Run --stage train first.")
         export_name = "saved_emotion_model" if model_id in ("m3_roberta_base", "m4_roberta_focal") else model_id
-        export_dir = export_model(trainer, tokenizer, model_id=export_name)
+        thresholds = None
+        threshold_metadata = None
+        if eval_result and eval_result.get("thresholds"):
+            thresholds = np.array(eval_result["thresholds"])
+            threshold_metadata = eval_result.get("threshold_log")
+        export_dir = export_model(
+            trainer,
+            tokenizer,
+            model_id=export_name,
+            thresholds=thresholds,
+            threshold_metadata=threshold_metadata,
+        )
         print(f"Exported: {export_dir}")
         if args.deploy:
             dest = deploy_to_production(export_dir, NOTEBOOKS_DIR.parent)

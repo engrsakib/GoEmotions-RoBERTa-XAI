@@ -83,6 +83,18 @@ def _log_split_distribution(title: str, distribution: dict) -> None:
         logger.info("    %-40s %5.2f%%", ID2LABEL[class_id], pct)
 
 
+def _safe_get(d: dict | None, *keys, default=None):
+    """Safely traverse nested dict keys."""
+    current = d
+    for key in keys:
+        if not isinstance(current, dict):
+            return default
+        current = current.get(key)
+        if current is None:
+            return default
+    return current
+
+
 def log_pipeline_stats(stats: dict) -> None:
     if not stats:
         logger.warning("No pipeline stats available to display.")
@@ -104,6 +116,11 @@ def log_pipeline_stats(stats: dict) -> None:
         counts = mapping.get("class_counts_named") or mapping.get("class_counts", {})
         percentages = mapping.get("class_percentages_named") or mapping.get("class_percentages", {})
         _log_class_distribution("Mapped Class Counts", counts, percentages)
+        if audit_block := mapping.get("mapping_audit"):
+            logger.info("=== Mapping Audit (schema %s) ===", audit_block.get("schema_version", "?"))
+            logger.info("  NaN label rate: %.2f%%", _safe_get(audit_block, "nan_label_rate", default=0) * 100)
+            logger.info("  Multi-label conflict rows: %s", audit_block.get("multi_label_conflict_rows"))
+            logger.info("  Unmapped columns: %s", audit_block.get("unmapped_emotion_columns", []))
 
     if cleaning := stats.get("cleaning"):
         logger.info("=== After Cleaning ===")
@@ -132,8 +149,26 @@ def log_pipeline_stats(stats: dict) -> None:
         logger.info("  Passed: %s", leakage.get("no_leakage"))
 
     if balance := stats.get("balance"):
-        logger.info("=== Class Balance ===")
-        logger.info("  Within tolerance (%.1f%%): %s", balance.get("tolerance_pct", 0.5), balance.get("within_tolerance"))
+        logger.info("=== Split Class Balance ===")
+        logger.info(
+            "  Within tolerance (%.1f%%): %s",
+            balance.get("tolerance_pct", 0.5),
+            balance.get("within_tolerance"),
+        )
+
+    if train_balance := stats.get("train_balance"):
+        strategy = train_balance.get("strategy", "none")
+        logger.info("=== Train Balance (%s) ===", strategy)
+        if strategy != "none":
+            logger.info(
+                "  Rows: %d -> %d",
+                _safe_get(train_balance, "rows_before", default=0),
+                _safe_get(train_balance, "rows_after", default=0),
+            )
+            after = train_balance.get("after", {})
+            after_counts = after.get("counts_named") or after.get("counts", {})
+            after_pcts = after.get("percentages", {})
+            _log_class_distribution("Balanced Train Counts", after_counts, after_pcts)
 
     if "min_train_samples_per_class" in stats:
         logger.info("  Min train samples per class: %d", stats["min_train_samples_per_class"])

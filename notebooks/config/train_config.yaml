@@ -9,7 +9,7 @@ max_length: 128
 num_labels: 7
 
 # Training hyperparameters
-epochs: 4
+epochs: 5
 batch_size: 16
 eval_batch_size: 16
 learning_rate: 2.0e-5
@@ -23,9 +23,20 @@ gradient_accumulation_steps: 1
 optim: adamw_torch
 lr_scheduler_type: cosine
 
-# Loss
+# Loss (focal | weighted_ce)
+loss_type: focal
 use_focal_loss: true
-focal_gamma: 2.0
+focal_gamma: 1.5
+use_class_weights: false
+class_weight_mode: sqrt_inverse
+
+# Early stopping (prevents overfitting on imbalanced data)
+early_stopping: true
+early_stopping_patience: 2
+
+# Per-class threshold tuning on validation set
+threshold_tuning: true
+threshold_search_step: 0.05
 
 # Checkpointing
 metric_for_best_model: eval_macro_f1
@@ -39,6 +50,11 @@ random_seed: 42
 train_ratio: 0.8
 val_ratio: 0.1
 test_ratio: 0.1
+
+# Train-only class balancing (val/test untouched)
+balance_strategy: hybrid
+target_neutral_pct: 0.27
+balance_random_seed: 42
 
 # Text cleaning
 min_char_length: 3

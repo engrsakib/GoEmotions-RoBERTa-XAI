@@ -9,7 +9,7 @@
 
 ## Abstract
 
-This document describes the methodology for fine-tuning transformer encoders on the GoEmotions dataset mapped to seven production emotion categories, with classical baselines, imbalance-aware loss functions, and Captum Integrated Gradients for token-level attribution heatmaps deployed via FastAPI.
+This document describes the methodology for fine-tuning transformer encoders on the GoEmotions dataset mapped to seven production emotion categories, with classical baselines, imbalance-aware loss functions, train-only class balancing, validation-set threshold tuning, and Captum Integrated Gradients for token-level attribution heatmaps deployed via FastAPI.
 
 ---
 
@@ -28,14 +28,27 @@ Reddit comment emotion detection requires handling multi-label annotations, seve
 | Raw samples | 211,225 |
 | Features | `id`, `text`, 28 emotion flags, `example_very_unclear` |
 | Target classes | 7 (aligned with `packages/model/app/labels.py`) |
+| Label schema | **v2.0** (full 28→7 coverage) |
 
 ---
 
 ## III. Data Engineering Methodology
 
-### III-A. Label Mapping
+### III-A. Label Mapping (Schema v2.0)
 
-Twenty-eight GoEmotions labels collapse into seven IDs (0–6). Multi-label rows resolve by priority list `[0,1,2,3,4,5,6]` (last active group wins).
+All twenty-eight GoEmotions emotion columns map to exactly one of seven production IDs. Multi-label rows resolve by priority list `[0,1,2,3,4,5,6]` (last active group wins).
+
+| Macro ID | Production label | Source emotions | Rationale |
+|----------|------------------|-----------------|-----------|
+| 0 | neutral | neutral, confusion, curiosity, realization, surprise | Cognitive / low-arousal / ambiguous |
+| 1 | sadness_grief | sadness, grief, disappointment, remorse | Negative self/other evaluation |
+| 2 | joy_amusement_excitement_optimism | joy, amusement, excitement, optimism, admiration, approval, gratitude, pride, relief | Positive affect |
+| 3 | anger_annoyance_disapproval_disgust | anger, annoyance, disapproval, disgust | Hostile / negative social |
+| 4 | desire | desire | Romantic / wanting |
+| 5 | fear_nervousness | fear, nervousness, embarrassment | Anxiety / threat / social discomfort |
+| 6 | love | love, caring | Affiliative warmth |
+
+`validate_mapping()` asserts no unmapped columns and no overlapping assignments. Audit script: `scripts/audit_label_mapping.py`.
 
 ### III-B. Filtering
 
@@ -55,8 +68,21 @@ Stratified 80/10/10 train/validation/test split (`random_state=42`).
 - Class proportion spread ≤ 0.5% across splits  
 - Minimum 100 training samples per class  
 
-**Implementation:** `src/data/pipeline.py`  
-**CLI:** `python scripts/01_data_engineering.py`
+### III-F. Train-Only Class Balancing
+
+To reduce majority-class gradient dominance without distorting evaluation:
+
+| Strategy | Description |
+|----------|-------------|
+| `none` | No balancing (ablation) |
+| `undersample_neutral` | Random subsample of neutral to ~27% of train |
+| `oversample_minority` | Random oversample of below-median classes to median |
+| `hybrid` | Undersample neutral + oversample desire/fear (default) |
+
+**Val and test splits are never modified.** Config: `balance_strategy`, `target_neutral_pct`, `balance_random_seed`.
+
+**Implementation:** `src/data/balance.py`, wired in `src/data/pipeline.py`  
+**CLI:** `python scripts/run_pipeline.py --force-data --stage data`
 
 ---
 
@@ -66,7 +92,7 @@ Stratified 80/10/10 train/validation/test split (`random_state=42`).
 |----|-----------|------|
 | M1 | TF-IDF + Logistic Regression | Classical baseline |
 | M2 | TF-IDF + Linear SVM | Linear baseline |
-| M3 | RoBERTa-base | Production encoder |
+| M3 | RoBERTa-base + Weighted CE | Production encoder (balanced loss) |
 | M4 | RoBERTa-base + Focal Loss | **Recommended** (imbalance) |
 | M5 | DistilRoBERTa-base | Efficient deployment |
 | M6 | DeBERTa-v3-base | Accuracy alternative |
@@ -83,25 +109,44 @@ See [02-eight-models.md](02-eight-models.md) for selection guidance.
 |----------------|-------|
 | Max sequence length | 128 |
 | Batch size | 16 |
-| Epochs | 4 |
+| Epochs | 5 (upper bound) |
+| Early stopping | patience=2 on `eval_macro_f1` |
 | Learning rate | 2×10⁻⁵ |
 | Optimizer | AdamW |
 | LR schedule | Cosine + 10% warmup |
 | Primary metric | Macro-F1 |
-| Loss (M4) | Focal (γ=2.0) + class weights |
+| Loss (M4) | Focal (γ=1.5), optional class weights |
+| Loss (M3) | Weighted cross-entropy (`sqrt_inverse` weights) |
+| Train balancing | `hybrid` (default) |
+
+When `balance_strategy ≠ none`, class weights are disabled by default to avoid double correction.
 
 **Config file:** `config/train_config.yaml`
+
+### Recommended Experiment Matrix
+
+| Run | Model | Loss | γ | Balance |
+|-----|-------|------|---|---------|
+| A | M3 | weighted_ce | — | hybrid |
+| B | M4 | focal | 1.5 | hybrid |
+| C | M4 | focal | 1.0 | hybrid |
+
+Select the configuration with best **validation** macro-F1 before final test evaluation.
 
 ---
 
 ## VI. Evaluation Protocol
 
 1. Report macro-F1, accuracy, per-class precision/recall/F1  
-2. Compare transformer against M1/M2 baselines  
-3. Success criteria: macro-F1 > baseline; sadness/desire F1 > 0.35  
-4. Confusion matrix on held-out test set (5,151 samples)
+2. **Argmax baseline** on held-out test set  
+3. **Threshold-tuned eval:** per-class probability thresholds optimized on validation (coordinate ascent, step=0.05), applied once to test  
+4. Report **val–test macro-F1 gap** as overfitting check (target < 3%)  
+5. Compare transformer against M1/M2 baselines  
+6. Success criteria: macro-F1 > baseline; sadness/desire F1 > 0.35  
 
-**Implementation:** `src/training/metrics.py`
+Thresholds exported to `artifacts/exports/saved_emotion_model/thresholds.json`.
+
+**Implementation:** `src/training/metrics.py`, `src/training/thresholds.py`, `src/training/trainer_setup.py`
 
 ---
 
@@ -122,13 +167,14 @@ Export checkpoint to `artifacts/exports/saved_emotion_model/`, copy to `packages
 ```bash
 cd notebooks
 pip install -r requirements-train.txt
-python scripts/run_pipeline.py --deploy
+python scripts/audit_label_mapping.py
+python scripts/run_pipeline.py --force-data --deploy
 ```
 
 Kaggle:
 
 ```bash
-python kaggle/run_training.py
+python kaggle/run_training.py --force-data
 ```
 
 ---
