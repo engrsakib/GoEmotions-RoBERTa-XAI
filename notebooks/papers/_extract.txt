@@ -1,0 +1,132 @@
+﻿==== 6.pdf ====
+Fine-Grained Emotion Detection on GoEmotions: Experimental
+Comparison of Classical Machine Learning, BiLSTM, and
+Transformer Models
+Zaven P. and Sonia Akian College of Science and Engineering, American University of Armenia, Yerevan, 0019, Armenia
+ARTICLE INFO
+Keywords:
+Sentiment Analysis
+Emotion Classification
+Natural Language Processing
+GoEmotions
+BiLSTM with Attention
+BERT
+Logistic Regression
+ABSTRACT
+Fine-grained emotion recognition is a challenging multi-label NLP task due to label overlap
+and class imbalance. In this work, we benchmark three modeling families on the GoEmotions
+dataset: a TF-IDF-based logistic regression system trained with binary relevance, a BiLSTM
+with attention, and a BERT model fine-tuned for multi-label classification. Experiments follow
+the official train/validation/test split, and imbalance is mitigated using inverse-frequency class
+weights. Across several metrics, namely Micro-F1, Macro-F1, Hamming Loss, and Subset
+Accuracy,weobservethatlogisticregressionattainsthehighestMicro-F1of0.51,whileBERT
+achievesthebestoverallbalancesurpassingtheofficialpaperÆsreportedresults,reachingMacro-
+F10.49,HammingLoss0.036,andSubsetAccuracy0.36.Thissuggeststhatfrequentemotions
+often rely on surface lexical cues, whereas contextual representations improve performance on
+
+==== 14.pdf ====
+Received 19 February 2026, accepted 27 February 2026, date of publication 4 March 2026, date of current version 13 March
+Digital Object Identifier 10.1 109/ACCESS.2026.36705 14
+Multiclass Stress Detection Using Psychological
+Emotion Mapping and Transformer Architectures
+KAL YANI PENDKE
+1,2, MAYURI DIGALWAR
+1, AND CHARU GOEL 1
+1Indian Institute of Information Technology, Nagpur, Nagpur, Maharashtra 441108, India
+2S. B. Jain Institute of Technology, Management and Research, Nagpur, Maharashtra 441501, India
+Corresponding author: Kalyani Pendke (dtea20cse004@iiitn.ac.in)
+ABSTRACT Stress is a common mental health problem that is apparent at a range of degrees of severity
+and in different circumstances. The conventional models to detect psychological stress are purely heuristic,
+mostly only binary classified, and neglect the fact that stress is complex and multi-dimensional. This paper
+presents a new hybrid deep learning model for multiclass stress detection by combining BERT, RoBERTa,
+CNN, and BiLSTM models. By leveraging the ææGoEmotion datasetÆÆ, the authors relate emotions to three
+different stress levels: Not Stressed, Stressed, and Highly Stressed, drawing on psychological expertise.
+The model is also tested on two external datasets, VENT and ISEAR, preprocessed and relabeled with the
+same stress mapping schema for generalizability. A major feature in this work is the use of LIME, which
+improves interpretability by pointing out the most informative text features. The hybrid model outperforms
+the baselines with an accuracy and F1-score of 97.84 percent each. In addition to this, the proposed model
+shows strong cross-domain generalization. In the field of mental health applications, this model proves to be
+a strong base for an explainable and real-time model for stress detection.
+INDEX TERMS Stress detection, multiclass classification, deep learning, BERT, RoBERTa, LSTM, CNN,
+text analytics, emotion classification.
+I. INTRODUCTION
+
+==== 3.pdf ====
+Received 5 March 2025, accepted 22 March 2025, date of publication 2 April 2025, date of current version 11 April 2025.
+Digital Object Identifier 10.1 109/ACCESS.2025.3557091
+Improving Multi-Label Emotion Classification on
+Imbalanced Social Media Data With BERT and
+Clipped Asymmetric Loss
+SANDHYA RAMAKRISHNAN
+AND L. D. DHINESH BABU
+School of Computer Science Engineering and Information Systems (SCORE), V ellore Institute of Technology, V ellore 63201
+Corresponding author: L. D. Dhinesh Babu (lddhineshbabu@gmail.com)
+This work was supported by V ellore Institute of Technology, V ellore, India.
+ABSTRACT This research addresses the challenge of multi-label emotion classification on imbalanced
+datasets using a BERT-based model. Emotion classification, essential for applications like social media
+analysis and sentiment monitoring, often suffers from class imbalance, which hinders the detection of rare
+emotions. To address this, our model incorporates a clipped asymmetric loss function to prioritize minority
+classes while mitigating the dominance of frequent classes. We conducted extensive experimentation on
+GoEmotions and SemEval-2018 Task 1C datasets to demonstrate the modelÆs effectiveness in achieving
+improved precision, recall, and F1-scores across various taxonomies, including GoEmotions, Ekman, and
+sentiment-grouped levels. Our approach achieved a notable improvement in macro-average F1-scores,
+increasing from 0.46 (baseline) to 0.54 on the GoEmotions dataset and 0.59 on the SemEval-2018 dataset.
+The results indicate significant advancements over standard BERT implementations and state-of-the-art
+models, particularly in recognizing rare emotions, making the model a robust solution for real-world, multi-
+label emotion classification tasks under imbalanced settings.
+INDEX TERMS Asymmetric loss, BERT, emotion recognition, GoEmotions dataset, imbalanced data,
+multi-label classification, NLP .
+I. INTRODUCTION
+
+==== 15.pdf ====
+Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics , pages 4040û4054
+July 5 - 10, 2020. c⌐2020 Association for Computational Linguistics
+4040
+GoEmotions: A Dataset of Fine-Grained Emotions
+Alan Cowen2 Gaurav Nemade2 Sujith Ravi3*
+1Stanford Linguistics 2Google Research 3Amazon Alexa
+ddemszky@stanford.edu
+{danama, jko, acowen, gnemade }@google.com
+sravi@sravi.org
+Abstract
+Understanding emotion expressed in language
+has a wide range of applications, from build-
+ing empathetic chatbots to detecting harmful
+online behavior. Advancement in this area can
+be improved using large-scale datasets with
+ple downstream tasks. We introduce GoEmo-
+tions, the largest manually annotated dataset
+of 58k English Reddit comments, labeled for
+27 emotion categories or Neutral. We demon-
+strate the high quality of the annotations via
+Principal Preserved Component Analysis. We
+conduct transfer learning experiments with ex-
+isting emotion benchmarks to show that our
+
+==== 16.pdf ====
+1
+ORIGINAL RESEARCHPREMIER JOURNAL OF SCIENCE
+Improving Fine-Grained Emotion Detection in Text with BERT and
+GoEmotions
+Prem Sagar1, Ruban S2 and Michelle Vimalrajan1
+1Department of Computer
+Science St JosephÆs University
+Bangalore, India
+2Department of Computer
+Science  St Aloysius University
+Mangalore, India
+Correspondence to:
+Prem Sagar,
+prem.sagar_@sju.edu.in
+Additional material is published
+online only. To view please visit
+the journal online.
+Cite this as: Sagar P , Ruban S and
+Vimalrajan M. Improving Fine-
+Grained Emotion Detection in
+Text with BERT and GoEmotions.
+Premier Journal of Science
+2025;15:100204
+DOI: https:/ /doi.org/10.70389/
+PJS.100204
+

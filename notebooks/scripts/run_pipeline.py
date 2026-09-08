@@ -50,6 +50,7 @@ from src.training.trainer_setup import (
     export_model,
     prepare_hf_datasets,
 )
+from src.training.multilabel_trainer import build_multilabel_trainer, prepare_multilabel_hf_datasets
 from src.visualization.eda import run_eda
 from src.xai.captum_ig import explain_samples
 
@@ -185,42 +186,65 @@ def main() -> None:
         print(f"Device: {device} | HF: {config['model_name']}")
 
         tokenizer = AutoTokenizer.from_pretrained(config["model_name"])
-        train_ds, val_ds, test_ds, train_labels = prepare_hf_datasets(
-            train_df, val_df, test_df, tokenizer, max_length=config["max_length"]
-        )
-        trainer, tokenizer, model = build_trainer(config, train_ds, val_ds, train_labels=train_labels)
+        track = config.get("track", "singlelabel")
 
-        if run_all or args.stage == "train":
-            trainer.train()
+        if track == "multilabel":
+            train_ds, val_ds, test_ds, train_labels = prepare_multilabel_hf_datasets(
+                train_df, val_df, test_df, tokenizer, max_length=config["max_length"]
+            )
+            trainer, tokenizer, model = build_multilabel_trainer(
+                config, train_ds, val_ds, train_labels=train_labels
+            )
+            if run_all or args.stage == "train":
+                trainer.train()
+            print("\n=== Stage 5: Evaluation (multi-label) ===")
+            eval_metrics = trainer.evaluate()
+            eval_result = {"test_metrics": eval_metrics, "track": "multilabel"}
+            print(json.dumps(eval_metrics, indent=2))
+        else:
+            train_ds, val_ds, test_ds, train_labels = prepare_hf_datasets(
+                train_df, val_df, test_df, tokenizer, max_length=config["max_length"]
+            )
+            trainer, tokenizer, model = build_trainer(config, train_ds, val_ds, train_labels=train_labels)
 
-        print("\n=== Stage 5: Evaluation ===")
-        eval_result = evaluate_with_threshold_tuning(
-            trainer, val_ds, test_ds, config=config
-        )
-        roberta_f1 = eval_result["test_metrics"]["macro_f1"]
-        roberta_f1_argmax = eval_result["test_metrics_argmax"]["macro_f1"]
-        print(f"{model_id} test macro-F1 (thresholded): {roberta_f1:.4f}")
-        print(f"{model_id} test macro-F1 (argmax):       {roberta_f1_argmax:.4f}")
-        print(f"Val-test macro-F1 gap: {eval_result['val_test_macro_f1_gap']:.4f}")
-        if eval_result.get("thresholds"):
-            print(f"Per-class thresholds: {eval_result['thresholds']}")
-        print(eval_result["classification_report"])
+            if run_all or args.stage == "train":
+                trainer.train()
+
+            print("\n=== Stage 5: Evaluation ===")
+            eval_result = evaluate_with_threshold_tuning(
+                trainer, val_ds, test_ds, config=config
+            )
+            roberta_f1 = eval_result["test_metrics"]["macro_f1"]
+            roberta_f1_argmax = eval_result["test_metrics_argmax"]["macro_f1"]
+            print(f"{model_id} test macro-F1 (thresholded): {roberta_f1:.4f}")
+            print(f"{model_id} test macro-F1 (argmax):       {roberta_f1_argmax:.4f}")
+            print(f"Val-test macro-F1 gap: {eval_result['val_test_macro_f1_gap']:.4f}")
+            if eval_result.get("thresholds"):
+                print(f"Per-class thresholds: {eval_result['thresholds']}")
+            print(eval_result["classification_report"])
 
         metrics_path = EXPORTS_DIR / "training_metrics.json"
         payload = {
             "model_id": model_id,
             "model_name": config["model_name"],
+            "track": track,
             "loss_type": config.get("loss_type", "focal"),
+            "dedup_policy": config.get("dedup_policy", "consensus"),
             "balance_strategy": config.get("balance_strategy", "none"),
-            "transformer_test_macro_f1": roberta_f1,
-            "val_metrics": eval_result["val_metrics"],
-            "test_metrics_argmax": eval_result["test_metrics_argmax"],
-            "test_metrics_thresholded": eval_result["test_metrics_thresholded"],
-            "test_metrics": eval_result["test_metrics"],
-            "val_test_macro_f1_gap": eval_result["val_test_macro_f1_gap"],
-            "thresholds": eval_result.get("thresholds"),
-            "threshold_log": eval_result.get("threshold_log"),
         }
+        if track == "multilabel":
+            payload["eval_metrics"] = eval_result.get("test_metrics", {})
+        else:
+            payload.update({
+                "transformer_test_macro_f1": eval_result["test_metrics"]["macro_f1"],
+                "val_metrics": eval_result["val_metrics"],
+                "test_metrics_argmax": eval_result["test_metrics_argmax"],
+                "test_metrics_thresholded": eval_result["test_metrics_thresholded"],
+                "test_metrics": eval_result["test_metrics"],
+                "val_test_macro_f1_gap": eval_result["val_test_macro_f1_gap"],
+                "thresholds": eval_result.get("thresholds"),
+                "threshold_log": eval_result.get("threshold_log"),
+            })
         if baseline_results:
             payload["baselines"] = {k: v["metrics"]["macro_f1"] for k, v in baseline_results.items()}
         with metrics_path.open("w", encoding="utf-8") as handle:
@@ -248,7 +272,10 @@ def main() -> None:
         threshold_metadata = None
         if eval_result and eval_result.get("thresholds"):
             thresholds = np.array(eval_result["thresholds"])
-            threshold_metadata = eval_result.get("threshold_log")
+            threshold_metadata = {
+                **(eval_result.get("threshold_log") or {}),
+                "uncertain_threshold": config.get("uncertain_threshold", 0.35),
+            }
         export_dir = export_model(
             trainer,
             tokenizer,

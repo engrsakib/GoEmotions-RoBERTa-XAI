@@ -104,5 +104,8 @@ def apply_model_to_config(config: dict, model_id: str) -> dict:
         merged["model_id"] = spec.id
     if spec.family == "transformer":
         merged["use_focal_loss"] = spec.use_focal_loss
-        merged["loss_type"] = "focal" if spec.use_focal_loss else "weighted_ce"
+        if spec.use_focal_loss:
+            merged.setdefault("loss_type", "focal")
+        else:
+            merged.setdefault("loss_type", "weighted_ce")
     return merged

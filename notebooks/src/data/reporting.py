@@ -124,11 +124,13 @@ def log_pipeline_stats(stats: dict) -> None:
 
     if cleaning := stats.get("cleaning"):
         logger.info("=== After Cleaning ===")
+        logger.info("  Dedup policy: %s", cleaning.get("dedup_policy", "unknown"))
         logger.info(
-            "  %d -> %d rows (dedup dropped %d, length filter dropped %d)",
-            cleaning["initial_rows"],
-            cleaning["remaining_rows"],
+            "  %d -> %d rows (dedup dropped %d, ambiguous dropped %d, length filter dropped %d)",
+            cleaning.get("initial_rows", 0),
+            cleaning.get("remaining_rows", 0),
             cleaning.get("dedup_dropped", 0),
+            cleaning.get("ambiguous_duplicates_dropped", 0),
             cleaning.get("length_filter_dropped", 0),
         )
 

@@ -1,6 +1,11 @@
 # GoEmotions-RoBERTa training configuration
 # Paths resolved via src/paths.py
 
+# Dual track: multilabel (IEEE paper) | singlelabel (production)
+track: singlelabel
+split_mode: stratified
+dedup_policy: consensus
+
 # Primary transformer (see src/training/model_registry.py for all 8 models)
 primary_model_id: m4_roberta_focal
 model_name: roberta-base
@@ -23,12 +28,21 @@ gradient_accumulation_steps: 1
 optim: adamw_torch
 lr_scheduler_type: cosine
 
-# Loss (focal | weighted_ce)
-loss_type: focal
-use_focal_loss: true
-focal_gamma: 1.5
-use_class_weights: false
+# Loss (focal | weighted_ce | asymmetric)
+loss_type: weighted_ce
+use_focal_loss: false
+focal_gamma: 1.0
+use_class_weights: true
 class_weight_mode: sqrt_inverse
+asymmetric_gamma_pos: 0
+asymmetric_gamma_neg: 4
+asymmetric_clip: 0.05
+
+# Distillation (Track B from Track A teacher)
+distill: false
+distill_alpha: 0.5
+distill_temperature: 2.0
+teacher_model_path: null
 
 # Early stopping (prevents overfitting on imbalanced data)
 early_stopping: true
@@ -37,6 +51,8 @@ early_stopping_patience: 2
 # Per-class threshold tuning on validation set
 threshold_tuning: true
 threshold_search_step: 0.05
+threshold_min_precision: 0.45
+uncertain_threshold: 0.35
 
 # Checkpointing
 metric_for_best_model: eval_macro_f1
@@ -51,8 +67,8 @@ train_ratio: 0.8
 val_ratio: 0.1
 test_ratio: 0.1
 
-# Train-only class balancing (val/test untouched)
-balance_strategy: hybrid
+# Train-only class balancing (val/test untouched) — none for IEEE default
+balance_strategy: none
 target_neutral_pct: 0.27
 balance_random_seed: 42
 
@@ -67,6 +83,16 @@ baseline_ngram_range: [1, 2]
 # XAI
 ig_n_steps: 32
 xai_sample_count: 5
+xai_faithfulness_samples: 50
+
+# Experiment matrix IDs (scripts/run_experiments.py)
+experiments:
+  E0: {description: "TF-IDF baselines"}
+  E1: {track: multilabel, model_id: m3_roberta_base, loss_type: weighted_ce}
+  E2: {track: multilabel, model_id: m6_deberta_v3, loss_type: asymmetric, split_mode: official}
+  E3: {track: singlelabel, model_id: m4_roberta_focal, loss_type: weighted_ce, focal_gamma: 1.0}
+  E4: {track: singlelabel, model_id: m3_roberta_base, distill: true}
+  E5: {description: "Dedup/balance ablation"}
 
 # Eight-model registry IDs (see docs/02-eight-models.md)
 models:

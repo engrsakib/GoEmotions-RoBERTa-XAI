@@ -43,17 +43,33 @@ def tune_thresholds(
     val_labels: np.ndarray,
     num_classes: int = 7,
     step: float = 0.05,
+    min_precision: float | None = None,
 ) -> tuple[np.ndarray, dict]:
     """
     Coordinate-ascent grid search per class to maximize validation macro-F1.
+    Optionally enforce per-class minimum precision (e.g. desire >= 0.45).
     """
+    from sklearn.metrics import precision_score
+
     default_threshold = 1.0 / num_classes
     thresholds = np.full(num_classes, default_threshold, dtype=np.float64)
     grid = np.arange(step, 1.0, step)
 
-    best_f1 = _macro_f1(val_labels, predict_with_thresholds(val_probs, thresholds), num_classes)
-    improved = True
+    def score_with_constraints(trial_thresholds: np.ndarray) -> float:
+        preds = predict_with_thresholds(val_probs, trial_thresholds)
+        if min_precision is not None:
+            precisions = precision_score(
+                val_labels, preds, average=None, zero_division=0, labels=list(range(num_classes))
+            )
+            if any(precisions[i] < min_precision for i in range(num_classes) if (val_labels == i).sum() > 0):
+                return -1.0
+        return _macro_f1(val_labels, preds, num_classes)
 
+    best_f1 = score_with_constraints(thresholds)
+    if best_f1 < 0:
+        best_f1 = _macro_f1(val_labels, predict_with_thresholds(val_probs, thresholds), num_classes)
+
+    improved = True
     while improved:
         improved = False
         for class_id in range(num_classes):
@@ -62,7 +78,7 @@ def tune_thresholds(
             for candidate in grid:
                 trial = thresholds.copy()
                 trial[class_id] = candidate
-                score = _macro_f1(val_labels, predict_with_thresholds(val_probs, trial), num_classes)
+                score = score_with_constraints(trial)
                 if score > best_class_f1:
                     best_class_f1 = score
                     best_class_threshold = candidate
@@ -77,6 +93,7 @@ def tune_thresholds(
         "val_macro_f1_thresholded": best_f1,
         "improvement": round(best_f1 - argmax_f1, 4),
         "thresholds": thresholds.tolist(),
+        "min_precision_constraint": min_precision,
     }
 
 

@@ -274,6 +274,28 @@ def load_official_splits(base_dir: Path) -> dict[str, pd.DataFrame] | None:
     return splits
 
 
+def try_load_official_splits() -> dict[str, pd.DataFrame] | None:
+    """Search known paths for GoEmotions official train/dev/test TSV files."""
+    from src.data.split import discover_official_tsv_dir
+
+    search_dirs = [
+        DATA_RAW_DIR,
+        NOTEBOOKS_DIR / "dataset",
+        NOTEBOOKS_DIR / "dataset" / "goemotions",
+        Path("/kaggle/input/go-emotions-google-emotions-dataset"),
+        Path("/kaggle/input/notebooks/shivamb/list-of-emotions"),
+    ]
+    if IS_KAGGLE:
+        from src.paths import kaggle_input_dirs
+
+        search_dirs.extend(kaggle_input_dirs())
+
+    tsv_dir = discover_official_tsv_dir(search_dirs)
+    if tsv_dir is None:
+        return None
+    return load_official_splits(tsv_dir)
+
+
 def load_raw_dataframe() -> pd.DataFrame:
     """
     Load order:

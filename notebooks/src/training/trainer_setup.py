@@ -28,6 +28,12 @@ from src.training.focal_loss import (
 from src.training.metrics import build_classification_report, build_confusion_matrix, hf_compute_metrics
 from src.training.thresholds import predict_with_thresholds, save_thresholds, softmax, tune_thresholds
 
+try:
+    from src.training.distill import DistillationTrainer, load_teacher_model
+except ImportError:
+    DistillationTrainer = None
+    load_teacher_model = None
+
 
 def load_label_map(processed_dir: Path | None = None) -> tuple[dict, dict]:
     processed_dir = processed_dir or PROCESSED_DIR
@@ -158,8 +164,24 @@ def build_trainer(
     elif loss_type == "weighted_ce":
         trainer_cls = WeightedCETrainer
         trainer_kwargs = {"class_weights": class_weights}
+    elif loss_type == "asymmetric":
+        raise ValueError("loss_type 'asymmetric' requires track=multilabel; use build_multilabel_trainer().")
     else:
         raise ValueError(f"Unknown loss_type '{loss_type}'. Choose: focal, weighted_ce")
+
+    if config.get("distill") and config.get("teacher_model_path"):
+        if DistillationTrainer is None or load_teacher_model is None:
+            raise ImportError("DistillationTrainer not available")
+        teacher = load_teacher_model(config["teacher_model_path"], NUM_LABELS)
+        if torch.cuda.is_available():
+            teacher = teacher.cuda()
+        trainer_cls = DistillationTrainer
+        trainer_kwargs = {
+            "teacher_model": teacher,
+            "distill_alpha": config.get("distill_alpha", 0.5),
+            "distill_temperature": config.get("distill_temperature", 2.0),
+            "class_weights": class_weights,
+        }
 
     trainer = trainer_cls(
         model=model,
@@ -230,7 +252,11 @@ def evaluate_with_threshold_tuning(
     if config.get("threshold_tuning", True):
         step = config.get("threshold_search_step", 0.05)
         thresholds, threshold_log = tune_thresholds(
-            val_probs, val_labels, num_classes=NUM_LABELS, step=step
+            val_probs,
+            val_labels,
+            num_classes=NUM_LABELS,
+            step=step,
+            min_precision=config.get("threshold_min_precision"),
         )
 
     test_argmax_preds = np.argmax(test_probs, axis=-1)

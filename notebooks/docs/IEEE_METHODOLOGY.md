@@ -74,15 +74,36 @@ To reduce majority-class gradient dominance without distorting evaluation:
 
 | Strategy | Description |
 |----------|-------------|
-| `none` | No balancing (ablation) |
+| `none` | No balancing **(IEEE default)** |
 | `undersample_neutral` | Random subsample of neutral to ~27% of train |
 | `oversample_minority` | Random oversample of below-median classes to median |
-| `hybrid` | Undersample neutral + oversample desire/fear (default) |
+| `hybrid` | Undersample neutral + oversample desire/fear |
 
-**Val and test splits are never modified.** Config: `balance_strategy`, `target_neutral_pct`, `balance_random_seed`.
+**Val and test splits are never modified.**
 
-**Implementation:** `src/data/balance.py`, wired in `src/data/pipeline.py`  
-**CLI:** `python scripts/run_pipeline.py --force-data --stage data`
+### III-G. Deduplication Policy (`dedup_policy`)
+
+Global pre-split dedup removed ~72% of rows and injected label noise (69% of rows had conflicting labels across duplicate texts). Configurable policies in `src/data/clean.py`:
+
+| Policy | Description |
+|--------|-------------|
+| `consensus` | Keep duplicate texts only when all copies share the same 7-class label **(default)** |
+| `none` | Keep all rows |
+| `split_internal` | Dedup within each split after assignment |
+| `global_first` | Legacy keep-first (**deprecated**) |
+
+### III-H. Dual-Track Architecture
+
+| Track | Purpose | Labels | Model |
+|-------|---------|--------|-------|
+| **A — multilabel** | IEEE benchmark (Paper 3, 6) | 7-dim multi-hot macro | DeBERTa-v3 + asymmetric loss |
+| **B — singlelabel** | Production API | Clean single-macro rows only | RoBERTa + weighted CE / distillation |
+
+Knowledge distillation (`src/training/distill.py`) transfers Track A teacher logits to Track B student.
+
+**Split modes:** `split_mode: official` (train/dev/test TSV) for papers; `stratified` for application mapping.
+
+**CLI:** `python scripts/run_experiments.py --experiment E2`
 
 ---
 
@@ -115,23 +136,26 @@ See [02-eight-models.md](02-eight-models.md) for selection guidance.
 | Optimizer | AdamW |
 | LR schedule | Cosine + 10% warmup |
 | Primary metric | Macro-F1 |
-| Loss (M4) | Focal (γ=1.5), optional class weights |
-| Loss (M3) | Weighted cross-entropy (`sqrt_inverse` weights) |
-| Train balancing | `hybrid` (default) |
+| Loss (Track A) | Asymmetric clipped loss (Paper 3) |
+| Loss (Track B) | Weighted CE or focal (γ=1.0) |
+| Train balancing | `none` (default) |
+| Dedup policy | `consensus` (default) |
+| Track | `singlelabel` (production) or `multilabel` (IEEE) |
 
 When `balance_strategy ≠ none`, class weights are disabled by default to avoid double correction.
 
 **Config file:** `config/train_config.yaml`
 
-### Recommended Experiment Matrix
+### Experiment Matrix (`scripts/run_experiments.py`)
 
-| Run | Model | Loss | γ | Balance |
-|-----|-------|------|---|---------|
-| A | M3 | weighted_ce | — | hybrid |
-| B | M4 | focal | 1.5 | hybrid |
-| C | M4 | focal | 1.0 | hybrid |
-
-Select the configuration with best **validation** macro-F1 before final test evaluation.
+| ID | Track | Model | Loss | Dedup |
+|----|-------|-------|------|-------|
+| E0 | — | TF-IDF baselines | — | consensus |
+| E1 | multilabel | RoBERTa | weighted BCE | consensus |
+| E2 | multilabel | DeBERTa-v3 | asymmetric | consensus + official split |
+| E3 | singlelabel | RoBERTa focal | weighted CE | consensus |
+| E4 | singlelabel | RoBERTa | distillation | consensus |
+| E5 | ablation | — | — | none / global_first / hybrid |
 
 ---
 
@@ -139,12 +163,13 @@ Select the configuration with best **validation** macro-F1 before final test eva
 
 1. Report macro-F1, accuracy, per-class precision/recall/F1  
 2. **Argmax baseline** on held-out test set  
-3. **Threshold-tuned eval:** per-class probability thresholds optimized on validation (coordinate ascent, step=0.05), applied once to test  
-4. Report **val–test macro-F1 gap** as overfitting check (target < 3%)  
-5. Compare transformer against M1/M2 baselines  
-6. Success criteria: macro-F1 > baseline; sadness/desire F1 > 0.35  
+3. **Threshold-tuned eval** with optional **minimum precision floor** (e.g. desire ≥ 0.45)  
+4. Report **val–test macro-F1 gap** (target < 3%)  
+5. **Multi-label metrics** (Track A): macro/micro-F1, Hamming loss, subset accuracy  
+6. **XAI faithfulness:** deletion AOPC on N samples (`src/xai/faithfulness.py`)  
+7. **External validation:** map SemEval-2018 or curated samples through schema v2 (planned subset in `dataset/external/`)
 
-Thresholds exported to `artifacts/exports/saved_emotion_model/thresholds.json`.
+Thresholds + `uncertain_threshold` exported to `artifacts/exports/saved_emotion_model/thresholds.json`. Production returns `uncertain` when max confidence < τ.
 
 **Implementation:** `src/training/metrics.py`, `src/training/thresholds.py`, `src/training/trainer_setup.py`
 
@@ -152,13 +177,13 @@ Thresholds exported to `artifacts/exports/saved_emotion_model/thresholds.json`.
 
 ## VII. Explainability (XAI)
 
-Layer Integrated Gradients applied to RoBERTa embedding layer (`n_steps=32`), matching production `packages/model/app/explainability.py`.
+Layer Integrated Gradients (`n_steps=32`) plus **deletion AOPC** faithfulness metric (Paper 13). Implementation: `src/xai/captum_ig.py`, `src/xai/faithfulness.py`.
 
 ---
 
 ## VIII. Deployment
 
-Export checkpoint to `artifacts/exports/saved_emotion_model/`, copy to `packages/model/saved_emotion_model/`, serve via Docker Compose (ports 3000/4000/8000).
+Export checkpoint to `artifacts/exports/saved_emotion_model/`. Inference loads `thresholds.json` and supports uncertain rejection (`packages/model/app/inference.py`).
 
 ---
 
@@ -168,7 +193,7 @@ Export checkpoint to `artifacts/exports/saved_emotion_model/`, copy to `packages
 cd notebooks
 pip install -r requirements-train.txt
 python scripts/audit_label_mapping.py
-python scripts/run_pipeline.py --force-data --deploy
+python scripts/run_experiments.py --experiment E3
 ```
 
 Kaggle:
@@ -176,6 +201,8 @@ Kaggle:
 ```bash
 python kaggle/run_training.py --force-data
 ```
+
+See also [papers/README.md](../papers/README.md) for the 16-paper bibliography.
 
 ---
 

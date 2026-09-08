@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import torch
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
@@ -55,3 +56,37 @@ def hf_compute_metrics(eval_pred, id2label: dict | None = None):
         "macro_recall": metrics["macro_recall"],
         "weighted_f1": metrics["weighted_f1"],
     }
+
+
+def _sigmoid(logits: np.ndarray) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-logits))
+
+
+def compute_multilabel_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+    """Metrics for multi-label classification (Paper 6 protocol)."""
+    from sklearn.metrics import f1_score, hamming_loss
+
+    macro_f1 = float(f1_score(y_true, y_pred, average="macro", zero_division=0))
+    micro_f1 = float(f1_score(y_true, y_pred, average="micro", zero_division=0))
+    hamming = float(hamming_loss(y_true, y_pred))
+    subset_acc = float((y_true == y_pred).all(axis=1).mean())
+    return {
+        "macro_f1": macro_f1,
+        "micro_f1": micro_f1,
+        "hamming_loss": hamming,
+        "subset_accuracy": subset_acc,
+    }
+
+
+def hf_compute_multilabel_metrics(eval_pred):
+    logits, labels = eval_pred
+    if isinstance(logits, tuple):
+        logits = logits[0]
+    if isinstance(labels, torch.Tensor):
+        labels = labels.cpu().numpy()
+    probs = _sigmoid(logits)
+    preds = (probs >= 0.5).astype(int)
+    if labels.ndim == 1:
+        labels = np.eye(probs.shape[1])[labels.astype(int)]
+    metrics = compute_multilabel_metrics(labels, preds)
+    return metrics

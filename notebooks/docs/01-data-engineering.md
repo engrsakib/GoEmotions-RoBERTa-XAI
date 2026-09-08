@@ -51,7 +51,14 @@ Applied **before splitting** to prevent leakage:
 3. Collapse repeated whitespace
 4. Drop `char_length < 3`
 5. Drop `token_length_approx > 128`
-6. Deduplicate on normalized lowercase text (keep first)
+6. Deduplicate via configurable `dedup_policy` (default: `consensus` — keep duplicates only when labels agree)
+
+| Policy | Behavior |
+|--------|----------|
+| `consensus` | Drop ambiguous duplicate texts (conflicting labels) |
+| `none` | Keep all rows |
+| `split_internal` | Dedup within each split after assignment |
+| `global_first` | Legacy keep-first (not recommended) |
 
 ### 4. Stratified Split (`src/data/split.py`)
 

@@ -1,9 +1,14 @@
+"""Production inference with threshold calibration and uncertain rejection."""
+
+from __future__ import annotations
+
 import json
 import logging
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -11,6 +16,9 @@ from app.explainability import compute_integrated_gradients
 from app.labels import BASE_MODEL, DISPLAY_LABELS, ID2LABEL, LABEL2ID, MAX_LENGTH, NUM_LABELS
 
 logger = logging.getLogger(__name__)
+
+UNCERTAIN_LABEL = "uncertain"
+UNCERTAIN_DISPLAY = "Uncertain (low confidence)"
 
 
 class EmotionInferenceService:
@@ -21,6 +29,8 @@ class EmotionInferenceService:
         self.model = None
         self.id2label = dict(ID2LABEL)
         self.label2id = dict(LABEL2ID)
+        self.thresholds: np.ndarray | None = None
+        self.uncertain_threshold: float = 0.35
         self._load()
 
     def _resolve_model_path(self) -> Path:
@@ -38,9 +48,19 @@ class EmotionInferenceService:
         self.id2label = {int(k): str(v) for k, v in payload["id2label"].items()}
         self.label2id = {str(k): int(v) for k, v in payload["label2id"].items()}
 
+    def _load_thresholds(self, model_dir: Path) -> None:
+        thresholds_file = model_dir / "thresholds.json"
+        if not thresholds_file.exists():
+            return
+        with thresholds_file.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        self.thresholds = np.array(payload["thresholds"], dtype=np.float64)
+        self.uncertain_threshold = float(payload.get("uncertain_threshold", self.uncertain_threshold))
+
     def _load(self) -> None:
         model_dir = self._resolve_model_path()
         self._load_label_map(model_dir)
+        self._load_thresholds(model_dir)
 
         if (model_dir / "config.json").exists():
             logger.info("Loading fine-tuned model from %s", model_dir)
@@ -67,7 +87,17 @@ class EmotionInferenceService:
     def is_ready(self) -> bool:
         return self.model is not None and self.tokenizer is not None
 
-    def _predict_logits(self, text: str) -> Tuple[int, str, float, Dict[str, float]]:
+    def _apply_thresholds(self, probabilities: np.ndarray) -> int:
+        if self.thresholds is None:
+            return int(np.argmax(probabilities))
+
+        adjusted = probabilities - self.thresholds
+        category = int(np.argmax(adjusted))
+        if probabilities[category] < self.thresholds[category]:
+            category = int(np.argmax(probabilities))
+        return category
+
+    def _predict_logits(self, text: str) -> Tuple[int, str, float, Dict[str, float], bool]:
         encoded = self.tokenizer(
             text,
             return_tensors="pt",
@@ -79,30 +109,44 @@ class EmotionInferenceService:
 
         with torch.no_grad():
             logits = self.model(**encoded).logits
-            probabilities = torch.softmax(logits, dim=-1)[0]
+            probabilities = torch.softmax(logits, dim=-1)[0].cpu().numpy()
 
-        category = int(torch.argmax(probabilities).item())
+        max_conf = float(np.max(probabilities))
+        is_uncertain = max_conf < self.uncertain_threshold
+
+        if is_uncertain:
+            return -1, UNCERTAIN_LABEL, max_conf, {
+                self.id2label[idx]: float(probabilities[idx]) for idx in range(len(probabilities))
+            }, True
+
+        category = self._apply_thresholds(probabilities)
         label = self.id2label[category]
-        confidence = float(probabilities[category].item())
+        confidence = float(probabilities[category])
         scores = {
-            self.id2label[idx]: float(probabilities[idx].item())
-            for idx in range(len(probabilities))
+            self.id2label[idx]: float(probabilities[idx]) for idx in range(len(probabilities))
         }
-        return category, label, confidence, scores
+        return category, label, confidence, scores, False
 
     def predict(self, text: str) -> Dict[str, object]:
-        category, label, confidence, scores = self._predict_logits(text)
+        category, label, confidence, scores, is_uncertain = self._predict_logits(text)
+        display = UNCERTAIN_DISPLAY if is_uncertain else DISPLAY_LABELS.get(category, label)
         return {
             "category": category,
             "label": label,
-            "display_label": DISPLAY_LABELS.get(category, label),
+            "display_label": display,
             "confidence": confidence,
             "scores": scores,
+            "is_uncertain": is_uncertain,
         }
 
     def explain(self, text: str, target_class: Optional[int] = None) -> Dict[str, object]:
         prediction = self.predict(text)
-        category = target_class if target_class is not None else prediction["category"]
+        category = target_class
+        if category is None:
+            if prediction["is_uncertain"]:
+                category = max(range(NUM_LABELS), key=lambda i: prediction["scores"][self.id2label[i]])
+            else:
+                category = prediction["category"]
         tokens, heatmap = compute_integrated_gradients(
             model=self.model,
             tokenizer=self.tokenizer,
@@ -122,7 +166,14 @@ class EmotionInferenceService:
 
     def chat(self, text: str) -> Dict[str, object]:
         explanation = self.explain(text)
-        reply = self._build_reply(explanation["display_label"], explanation["confidence"])
+        if explanation.get("is_uncertain"):
+            reply = (
+                f"I'm not confident enough to classify this message "
+                f"(max confidence {explanation['confidence']:.1%}). "
+                "Please provide more context."
+            )
+        else:
+            reply = self._build_reply(explanation["display_label"], explanation["confidence"])
         return {
             **explanation,
             "reply": reply,

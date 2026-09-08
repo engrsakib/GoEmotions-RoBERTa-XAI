@@ -10,9 +10,10 @@ import yaml
 from src.data.balance import balance_train_df
 from src.data.clean import clean_dataframe
 from src.data.label_mapping import apply_label_mapping, label_map_payload
-from src.data.load import audit_dataframe, load_raw_dataframe
+from src.data.load import audit_dataframe, load_raw_dataframe, try_load_official_splits
+from src.data.multi_label_mapping import apply_multi_label_mapping
 from src.data.reporting import load_stats_from_disk, log_pipeline_stats
-from src.data.split import check_class_balance, check_leakage, stratified_split
+from src.data.split import check_class_balance, check_leakage, official_split, stratified_split
 from src.paths import CONFIG_DIR, PROCESSED_DIR, ensure_artifact_dirs
 
 
@@ -85,26 +86,101 @@ def load_or_build_processed_splits(config: dict | None = None, *, force_rebuild:
     return result["train_df"], result["val_df"], result["test_df"], result["stats"]
 
 
-def run_data_pipeline(config: dict | None = None) -> dict:
-    ensure_artifact_dirs()
-    config = config or load_config()
+def _map_and_clean(raw_df, config: dict) -> tuple:
+    track = config.get("track", "singlelabel")
+    dedup_policy = config.get("dedup_policy", "consensus")
 
-    raw_df = load_raw_dataframe()
-    audit = audit_dataframe(raw_df)
+    if track == "multilabel":
+        mapped_df, mapping_log = apply_multi_label_mapping(raw_df, track=track)
+    else:
+        mapped_df, mapping_log = apply_label_mapping(raw_df)
+        mapped_df, _ = apply_multi_label_mapping(mapped_df, track="multilabel")
+        before = len(mapped_df)
+        mapped_df = mapped_df[mapped_df["n_active_macros"] == 1].reset_index(drop=True)
+        mapping_log["singlelabel_rows"] = len(mapped_df)
+        mapping_log["singlelabel_dropped"] = before - len(mapped_df)
 
-    mapped_df, mapping_log = apply_label_mapping(raw_df)
     cleaned_df, cleaning_log = clean_dataframe(
         mapped_df,
         min_char_length=config.get("min_char_length", 3),
         max_token_length_approx=config.get("max_token_length_approx", 128),
+        dedup_policy=dedup_policy,
     )
+    return cleaned_df, mapping_log, cleaning_log
 
-    train_df, val_df, test_df, split_log = stratified_split(
-        cleaned_df,
-        random_seed=config.get("random_seed", 42),
-        train_ratio=config.get("train_ratio", 0.8),
-        val_ratio=config.get("val_ratio", 0.1),
+
+def _process_official_splits(raw_splits: dict, config: dict) -> tuple:
+    from src.data.label_mapping import apply_label_mapping
+    from src.data.multi_label_mapping import apply_multi_label_mapping
+
+    track = config.get("track", "singlelabel")
+    dedup_policy = config.get("dedup_policy", "consensus")
+
+    processed = {}
+    logs = {}
+    for name, df in raw_splits.items():
+        if track == "multilabel":
+            mapped, log = apply_multi_label_mapping(df, track=track)
+        else:
+            mapped, log = apply_label_mapping(df)
+            mapped, _ = apply_multi_label_mapping(mapped, track="multilabel")
+            mapped = mapped[mapped["n_active_macros"] == 1].reset_index(drop=True)
+        cleaned, clean_log = clean_dataframe(mapped, dedup_policy=dedup_policy)
+        processed[name] = cleaned
+        logs[name] = {"mapping": log, "cleaning": clean_log}
+
+    train_df, val_df, test_df, split_log = official_split(
+        processed["train"],
+        processed["validation"],
+        processed["test"],
+        dedup_policy=dedup_policy,
     )
+    return train_df, val_df, test_df, split_log, logs
+
+
+def run_data_pipeline(config: dict | None = None) -> dict:
+    ensure_artifact_dirs()
+    config = config or load_config()
+    split_mode = config.get("split_mode", "stratified")
+    dedup_policy = config.get("dedup_policy", "consensus")
+
+    mapping_log = {}
+    cleaning_log = {}
+    split_log = {}
+    official_logs = {}
+
+    audit = {}
+    if split_mode == "official":
+        raw_splits = try_load_official_splits()
+        if raw_splits is None:
+            print("WARNING: Official TSV splits not found; falling back to stratified split.")
+            split_mode = "stratified"
+        else:
+            audit = {
+                "split_mode": "official",
+                "train_rows": len(raw_splits["train"]),
+                "val_rows": len(raw_splits["validation"]),
+                "test_rows": len(raw_splits["test"]),
+            }
+            train_df, val_df, test_df, split_log, official_logs = _process_official_splits(
+                raw_splits, config
+            )
+            mapping_log = official_logs.get("train", {}).get("mapping", {})
+            cleaning_log = official_logs.get("train", {}).get("cleaning", {})
+
+    if split_mode == "stratified":
+        raw_df = load_raw_dataframe()
+        audit = audit_dataframe(raw_df)
+        cleaned_df, mapping_log, cleaning_log = _map_and_clean(raw_df, config)
+        train_df, val_df, test_df, split_log = stratified_split(
+            cleaned_df,
+            random_seed=config.get("random_seed", 42),
+            train_ratio=config.get("train_ratio", 0.8),
+            val_ratio=config.get("val_ratio", 0.1),
+            dedup_policy=dedup_policy,
+        )
+
+    stats_audit = audit
 
     balance_strategy = config.get("balance_strategy", "none")
     if balance_strategy != "none":
@@ -122,10 +198,13 @@ def run_data_pipeline(config: dict | None = None) -> dict:
 
     min_train_per_class = train_df["encoded_label"].value_counts().min()
     stats = {
-        "audit": audit,
+        "audit": stats_audit,
         "mapping": mapping_log,
         "cleaning": cleaning_log,
         "split": split_log,
+        "split_mode": split_mode,
+        "dedup_policy": dedup_policy,
+        "track": config.get("track", "singlelabel"),
         "leakage": leakage,
         "balance": balance,
         "train_balance": train_balance_log,
@@ -143,5 +222,3 @@ def run_data_pipeline(config: dict | None = None) -> dict:
         "stats": stats,
         "output_dir": str(output_dir),
     }
-
-
