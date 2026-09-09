@@ -31,9 +31,15 @@ def compute_sklearn_metrics(y_true, y_pred, labels: list[int] | None = None) -> 
 
 
 def build_classification_report(y_true, y_pred, id2label: dict) -> str:
-    target_names = [id2label[i] for i in sorted(id2label.keys())]
+    label_ids = sorted(id2label.keys())
+    target_names = [id2label[i] for i in label_ids]
     return classification_report(
-        y_true, y_pred, target_names=target_names, zero_division=0, digits=4
+        y_true,
+        y_pred,
+        labels=label_ids,
+        target_names=target_names,
+        zero_division=0,
+        digits=4,
     )
 
 

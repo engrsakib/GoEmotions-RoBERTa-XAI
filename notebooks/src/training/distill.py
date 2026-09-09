@@ -63,6 +63,7 @@ def load_teacher_model(model_path: str, num_labels: int = 7):
     model = AutoModelForSequenceClassification.from_pretrained(
         model_path,
         num_labels=num_labels,
+        problem_type="multi_label_classification",
     )
     model.eval()
     return model

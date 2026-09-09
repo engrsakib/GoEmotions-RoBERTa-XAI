@@ -18,7 +18,7 @@ import yaml
 from src.data.pipeline import load_config, run_data_pipeline
 from src.paths import CHECKPOINTS_DIR, EXPORTS_DIR, ensure_artifact_dirs
 from src.training.baselines import run_all_baselines
-from src.training.model_profiles import find_best_teacher_experiment
+from src.training.model_profiles import find_best_teacher_experiment, resolve_model_checkpoint
 from src.training.model_registry import apply_model_to_config, get_model
 from src.training.multilabel_trainer import build_multilabel_trainer, prepare_multilabel_hf_datasets
 from src.training.trainer_setup import (
@@ -121,11 +121,11 @@ def resolve_teacher_path(exp_config: dict) -> str | None:
     if not model_id:
         return None
 
-    checkpoint = CHECKPOINTS_DIR / model_id
-    if checkpoint.is_dir():
-        exp_config["teacher_model_path"] = str(checkpoint)
+    checkpoint = resolve_model_checkpoint(model_id)
+    if checkpoint:
+        exp_config["teacher_model_path"] = checkpoint
         exp_config["teacher_experiment"] = best.get("experiment_id")
-        return str(checkpoint)
+        return checkpoint
     return None
 
 
@@ -196,6 +196,9 @@ def run_experiment(
         trainer.train()
         eval_result = trainer.evaluate()
         test_result = trainer.evaluate(test_ds)
+        export_dir = CHECKPOINTS_DIR / model_id
+        trainer.save_model(str(export_dir))
+        tokenizer.save_pretrained(str(export_dir))
         payload = {
             "experiment_id": exp_id,
             "track": track,

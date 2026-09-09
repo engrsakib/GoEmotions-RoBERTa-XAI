@@ -14,7 +14,7 @@ if str(NOTEBOOKS_DIR) not in sys.path:
 
 from src.data.pipeline import load_config
 from src.paths import CHECKPOINTS_DIR, EXPORTS_DIR, ensure_artifact_dirs
-from src.training.model_profiles import find_best_teacher_experiment
+from src.training.model_profiles import find_best_teacher_experiment, resolve_model_checkpoint
 from scripts.run_experiments import run_experiment
 
 
@@ -49,8 +49,10 @@ def main() -> None:
         config["fp16"] = False
     if best:
         model_id = best["model_id"]
-        teacher_path = CHECKPOINTS_DIR / model_id
-        config["teacher_model_path"] = str(teacher_path)
+        teacher_path = resolve_model_checkpoint(model_id)
+        if not teacher_path:
+            raise SystemExit(f"No checkpoint found for teacher model '{model_id}'.")
+        config["teacher_model_path"] = teacher_path
         config["teacher_experiment"] = best["experiment_id"]
         print(f"Teacher: {best['experiment_id']} ({model_id}) macro-F1={best['macro_f1']}")
 

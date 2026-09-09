@@ -44,6 +44,34 @@ def get_deberta_tuning_grid() -> list[dict]:
     return list(data.get("deberta_tuning_grid") or [])
 
 
+def resolve_model_checkpoint(model_id: str, checkpoints_dir: Path | None = None) -> str | None:
+    """Return path to saved model weights for a registry model_id."""
+    from src.paths import CHECKPOINTS_DIR
+
+    root = (checkpoints_dir or CHECKPOINTS_DIR) / model_id
+    if not root.is_dir():
+        return None
+
+    weight_names = (
+        "model.safetensors",
+        "pytorch_model.bin",
+        "tf_model.h5",
+        "model.ckpt.index",
+        "flax_model.msgpack",
+    )
+    if any((root / name).is_file() for name in weight_names):
+        return str(root)
+
+    checkpoints = sorted(
+        (p for p in root.iterdir() if p.is_dir() and p.name.startswith("checkpoint-")),
+        key=lambda p: int(p.name.split("-")[-1]),
+    )
+    for path in reversed(checkpoints):
+        if any((path / name).is_file() for name in weight_names):
+            return str(path)
+    return None
+
+
 def find_best_teacher_experiment(exports_dir: Path | None = None) -> dict | None:
     """Pick highest val/test macro-F1 among E2, E7, E8, E9 experiment JSON files."""
     from src.paths import EXPORTS_DIR

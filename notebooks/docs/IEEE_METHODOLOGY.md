@@ -167,9 +167,13 @@ When `balance_strategy ≠ none`, class weights are disabled by default to avoid
 | E4 | singlelabel | DistilRoBERTa | distillation | Deploy student from best teacher |
 | E5 | ablation | — | — | Dedup policy comparison |
 
-**DeBERTa tuning grid (validation only):** `python scripts/run_deberta_tuning.py` — LR {1e-5, 1.5e-5, 2e-5}, γ⁻ {3, 4, 5}, clip {0.03, 0.05, 0.07}.
+**DeBERTa tuning grid (validation only):** `python scripts/run_deberta_tuning.py` — LR {1e-5, 1.5e-5, 2e-5}, γ⁻ {3, 4, 5}, clip {0.03, 0.05, 0.07}. Results: `artifacts/exports/deberta_tuning_grid.json`.
 
 **Teacher selection:** Highest validation macro-F1 among E2, E7, E8, E9 → `python scripts/run_teacher_distill.py`.
+
+**DeBERTa tokenizer:** Use `DebertaV2Tokenizer` (slow) via `load_transformer_tokenizer()` — requires `sentencepiece` (see `requirements-train.txt`).
+
+**Twitter-RoBERTa-emotion (M11):** Load with `ignore_mismatched_sizes=True` to replace the 4-class head with 7 labels.
 
 ---
 
