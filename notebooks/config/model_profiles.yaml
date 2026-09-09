@@ -1,0 +1,83 @@
+# Per-model hyperparameter profiles (merged into train_config by model_id)
+
+defaults:
+  max_length: 128
+  epochs: 5
+  batch_size: 16
+  eval_batch_size: 16
+  learning_rate: 2.0e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  gradient_accumulation_steps: 1
+  early_stopping: true
+  early_stopping_patience: 2
+
+profiles:
+  m6_deberta_v3:
+    learning_rate: 1.5e-5
+    batch_size: 16
+    gradient_accumulation_steps: 2
+    loss_type: asymmetric
+    asymmetric_gamma_neg: 4
+    asymmetric_clip: 0.05
+    track: multilabel
+    fp16: true
+
+  m10_deberta_v3_large:
+    learning_rate: 1.0e-5
+    batch_size: 8
+    gradient_accumulation_steps: 4
+    loss_type: asymmetric
+    asymmetric_gamma_neg: 4
+    asymmetric_clip: 0.05
+    weight_decay: 0.05
+    early_stopping_patience: 1
+    track: multilabel
+    fp16: true
+
+  m9_twitter_roberta:
+    learning_rate: 2.0e-5
+    batch_size: 16
+    loss_type: asymmetric
+    asymmetric_gamma_neg: 4
+    asymmetric_clip: 0.05
+    track: multilabel
+
+  m11_twitter_roberta_emotion:
+    learning_rate: 1.5e-5
+    batch_size: 16
+    loss_type: asymmetric
+    asymmetric_gamma_neg: 4
+    asymmetric_clip: 0.05
+    ignore_mismatched_sizes: true
+    track: multilabel
+
+  m12_bertweet:
+    learning_rate: 2.0e-5
+    batch_size: 16
+    max_length: 128
+    loss_type: asymmetric
+    track: multilabel
+
+  m13_roberta_large:
+    learning_rate: 1.5e-5
+    batch_size: 8
+    gradient_accumulation_steps: 2
+    loss_type: weighted_ce
+    track: singlelabel
+
+  m3_roberta_base:
+    learning_rate: 2.0e-5
+    loss_type: weighted_ce
+    track: singlelabel
+
+  m5_distilroberta:
+    learning_rate: 2.0e-5
+    loss_type: weighted_ce
+    track: singlelabel
+
+# DeBERTa-v3-base tuning grid (E2-T*) — validation search only
+deberta_tuning_grid:
+  - {learning_rate: 1.0e-5, asymmetric_gamma_neg: 3, asymmetric_clip: 0.03}
+  - {learning_rate: 1.5e-5, asymmetric_gamma_neg: 4, asymmetric_clip: 0.05}
+  - {learning_rate: 2.0e-5, asymmetric_gamma_neg: 5, asymmetric_clip: 0.07}

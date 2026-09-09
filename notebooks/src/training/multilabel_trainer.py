@@ -23,6 +23,7 @@ from src.paths import CHECKPOINTS_DIR, LOGS_DIR
 from src.training.asymmetric_loss import AsymmetricLoss
 from src.training.focal_loss import compute_class_weights
 from src.training.metrics import hf_compute_multilabel_metrics
+from src.training.trainer_setup import load_transformer_tokenizer
 
 
 def prepare_multilabel_hf_datasets(train_df, val_df, test_df, tokenizer, max_length: int = 128):
@@ -119,14 +120,16 @@ def build_multilabel_trainer(
     checkpoint_dir = CHECKPOINTS_DIR / model_id
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_name,
-        num_labels=NUM_LABELS,
-        id2label=ID2LABEL,
-        label2id=LABEL2ID,
-        problem_type="multi_label_classification",
-    )
+    tokenizer = load_transformer_tokenizer(model_name)
+    load_kwargs = {
+        "num_labels": NUM_LABELS,
+        "id2label": ID2LABEL,
+        "label2id": LABEL2ID,
+        "problem_type": "multi_label_classification",
+    }
+    if config.get("ignore_mismatched_sizes"):
+        load_kwargs["ignore_mismatched_sizes"] = True
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, **load_kwargs)
 
     training_args = TrainingArguments(
         output_dir=str(checkpoint_dir),
@@ -147,6 +150,7 @@ def build_multilabel_trainer(
         logging_dir=str(LOGS_DIR),
         logging_steps=config.get("logging_steps", 50),
         fp16=config.get("fp16", False) and torch.cuda.is_available(),
+        gradient_accumulation_steps=config.get("gradient_accumulation_steps", 1),
         report_to=[],
     )
 

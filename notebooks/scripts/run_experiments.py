@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""IEEE experiment matrix runner (E0–E5)."""
+"""IEEE experiment matrix runner (E0–E10 + E5 ablations)."""
 
 from __future__ import annotations
 
@@ -16,18 +16,18 @@ if str(NOTEBOOKS_DIR) not in sys.path:
 import yaml
 
 from src.data.pipeline import load_config, run_data_pipeline
-from src.paths import EXPORTS_DIR, ensure_artifact_dirs
+from src.paths import CHECKPOINTS_DIR, EXPORTS_DIR, ensure_artifact_dirs
 from src.training.baselines import run_all_baselines
+from src.training.model_profiles import find_best_teacher_experiment
 from src.training.model_registry import apply_model_to_config, get_model
 from src.training.multilabel_trainer import build_multilabel_trainer, prepare_multilabel_hf_datasets
 from src.training.trainer_setup import (
     build_trainer,
     evaluate_with_threshold_tuning,
     export_model,
+    load_transformer_tokenizer,
     prepare_hf_datasets,
 )
-from src.xai.faithfulness import evaluate_faithfulness_batch
-from src.xai.captum_ig import explain_samples
 
 
 EXPERIMENT_PRESETS: dict[str, dict] = {
@@ -58,7 +58,7 @@ EXPERIMENT_PRESETS: dict[str, dict] = {
     },
     "E4": {
         "track": "singlelabel",
-        "model_id": "m3_roberta_base",
+        "model_id": "m5_distilroberta",
         "distill": True,
         "dedup_policy": "consensus",
         "balance_strategy": "none",
@@ -66,6 +66,38 @@ EXPERIMENT_PRESETS: dict[str, dict] = {
     "E5a": {"track": "singlelabel", "dedup_policy": "none", "balance_strategy": "none"},
     "E5b": {"track": "singlelabel", "dedup_policy": "global_first", "balance_strategy": "none"},
     "E5c": {"track": "singlelabel", "dedup_policy": "consensus", "balance_strategy": "hybrid"},
+    "E7": {
+        "track": "multilabel",
+        "model_id": "m9_twitter_roberta",
+        "loss_type": "asymmetric",
+        "split_mode": "official",
+        "dedup_policy": "consensus",
+        "balance_strategy": "none",
+    },
+    "E8": {
+        "track": "multilabel",
+        "model_id": "m11_twitter_roberta_emotion",
+        "loss_type": "asymmetric",
+        "split_mode": "official",
+        "dedup_policy": "consensus",
+        "balance_strategy": "none",
+    },
+    "E9": {
+        "track": "multilabel",
+        "model_id": "m10_deberta_v3_large",
+        "loss_type": "asymmetric",
+        "split_mode": "official",
+        "dedup_policy": "consensus",
+        "balance_strategy": "none",
+    },
+    "E10": {
+        "track": "singlelabel",
+        "model_id": "m9_twitter_roberta",
+        "loss_type": "weighted_ce",
+        "use_class_weights": True,
+        "dedup_policy": "consensus",
+        "balance_strategy": "none",
+    },
 }
 
 
@@ -75,7 +107,34 @@ def merge_config(base: dict, overrides: dict) -> dict:
     return merged
 
 
-def run_experiment(exp_id: str, config: dict, skip_train: bool = False) -> dict:
+def resolve_teacher_path(exp_config: dict) -> str | None:
+    """Resolve teacher checkpoint from config or best E2/E7/E8/E9 result."""
+    explicit = exp_config.get("teacher_model_path")
+    if explicit:
+        return explicit
+
+    best = find_best_teacher_experiment()
+    if not best:
+        return None
+
+    model_id = best.get("model_id")
+    if not model_id:
+        return None
+
+    checkpoint = CHECKPOINTS_DIR / model_id
+    if checkpoint.is_dir():
+        exp_config["teacher_model_path"] = str(checkpoint)
+        exp_config["teacher_experiment"] = best.get("experiment_id")
+        return str(checkpoint)
+    return None
+
+
+def run_experiment(
+    exp_id: str,
+    config: dict,
+    skip_train: bool = False,
+    extra_overrides: dict | None = None,
+) -> dict:
     preset = EXPERIMENT_PRESETS.get(exp_id, {})
     if not preset:
         raise ValueError(f"Unknown experiment id '{exp_id}'")
@@ -94,22 +153,40 @@ def run_experiment(exp_id: str, config: dict, skip_train: bool = False) -> dict:
     exp_config = merge_config(config, preset)
     if "model_id" in preset:
         exp_config = apply_model_to_config(exp_config, preset["model_id"])
+    if extra_overrides:
+        exp_config.update(extra_overrides)
+    if exp_config.get("max_samples"):
+        exp_config["epochs"] = 1
+        exp_config["fp16"] = False
+
+    if exp_config.get("distill") and not exp_config.get("teacher_model_path"):
+        teacher_path = resolve_teacher_path(exp_config)
+        if teacher_path is None and not skip_train:
+            raise RuntimeError(
+                "E4 distillation requires a trained teacher. Run E2, E7, E8, or E9 first, "
+                "or set teacher_model_path in config."
+            )
 
     result = run_data_pipeline(exp_config)
     train_df, val_df, test_df = result["train_df"], result["val_df"], result["test_df"]
     stats = result["stats"]
 
+    max_samples = exp_config.get("max_samples")
+    if max_samples:
+        train_df = train_df.head(max_samples)
+        val_df = val_df.head(max(32, max_samples // 8))
+        test_df = test_df.head(max(32, max_samples // 8))
+        stats = {**stats, "smoke_max_samples": max_samples}
+
     if skip_train:
-        return {"experiment_id": exp_id, "stats": stats}
+        return {"experiment_id": exp_id, "stats": stats, "config": _safe_config(exp_config)}
 
     track = exp_config.get("track", "singlelabel")
     model_id = exp_config.get("model_id", "m3_roberta_base")
-    spec = get_model(model_id)
+    get_model(model_id)
 
     if track == "multilabel":
-        from transformers import AutoTokenizer
-
-        tokenizer = AutoTokenizer.from_pretrained(exp_config["model_name"])
+        tokenizer = load_transformer_tokenizer(exp_config["model_name"])
         train_ds, val_ds, test_ds, train_labels = prepare_multilabel_hf_datasets(
             train_df, val_df, test_df, tokenizer, max_length=exp_config["max_length"]
         )
@@ -118,17 +195,17 @@ def run_experiment(exp_id: str, config: dict, skip_train: bool = False) -> dict:
         )
         trainer.train()
         eval_result = trainer.evaluate()
+        test_result = trainer.evaluate(test_ds)
         payload = {
             "experiment_id": exp_id,
             "track": track,
             "model_id": model_id,
             "stats": stats,
             "eval_metrics": eval_result,
+            "test_metrics": test_result,
         }
     else:
-        from transformers import AutoTokenizer
-
-        tokenizer = AutoTokenizer.from_pretrained(exp_config["model_name"])
+        tokenizer = load_transformer_tokenizer(exp_config["model_name"])
         train_ds, val_ds, test_ds, train_labels = prepare_hf_datasets(
             train_df, val_df, test_df, tokenizer, max_length=exp_config["max_length"]
         )
@@ -142,6 +219,9 @@ def run_experiment(exp_id: str, config: dict, skip_train: bool = False) -> dict:
             **(eval_result.get("threshold_log") or {}),
             "uncertain_threshold": exp_config.get("uncertain_threshold", 0.35),
         }
+        if exp_config.get("distill"):
+            metadata["teacher_experiment"] = exp_config.get("teacher_experiment")
+            metadata["teacher_model_path"] = exp_config.get("teacher_model_path")
         export_model(
             trainer,
             tokenizer,
@@ -169,15 +249,35 @@ def run_experiment(exp_id: str, config: dict, skip_train: bool = False) -> dict:
     return payload
 
 
+def _safe_config(config: dict) -> dict:
+    """Return JSON-serializable subset of config for skip-train exports."""
+    skip_keys = {"teacher_model_path"}
+    return {k: v for k, v in config.items() if k not in skip_keys or v is not None}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run IEEE experiment matrix")
-    parser.add_argument("--experiment", default="E3", help="Experiment ID (E0-E5c)")
+    parser.add_argument(
+        "--experiment",
+        default="E3",
+        help="Experiment ID (E0-E10, E5a-E5c)",
+    )
     parser.add_argument("--skip-train", action="store_true")
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=None,
+        help="Smoke test: cap train/val/test rows (sets epochs=1 if not overridden)",
+    )
     parser.add_argument("--faithfulness", action="store_true", help="Run XAI faithfulness after train")
     args = parser.parse_args()
 
     ensure_artifact_dirs()
     config = load_config()
+    if args.max_samples:
+        config["max_samples"] = args.max_samples
+        config.setdefault("epochs", 1)
+        config["fp16"] = False
     payload = run_experiment(args.experiment, config, skip_train=args.skip_train)
 
     out_path = EXPORTS_DIR / f"experiment_{args.experiment}.json"

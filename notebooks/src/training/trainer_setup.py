@@ -28,6 +28,15 @@ from src.training.focal_loss import (
 from src.training.metrics import build_classification_report, build_confusion_matrix, hf_compute_metrics
 from src.training.thresholds import predict_with_thresholds, save_thresholds, softmax, tune_thresholds
 
+
+def load_transformer_tokenizer(model_name: str):
+    """Load tokenizer; DeBERTa-v3 uses slow DebertaV2Tokenizer (avoids tiktoken fast path)."""
+    if "deberta" in model_name.lower():
+        from transformers import DebertaV2Tokenizer
+
+        return DebertaV2Tokenizer.from_pretrained(model_name)
+    return AutoTokenizer.from_pretrained(model_name)
+
 try:
     from src.training.distill import DistillationTrainer, load_teacher_model
 except ImportError:
@@ -101,13 +110,15 @@ def build_trainer(
     checkpoint_dir = CHECKPOINTS_DIR / model_id
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_name,
-        num_labels=NUM_LABELS,
-        id2label=id2label,
-        label2id=label2id,
-    )
+    tokenizer = load_transformer_tokenizer(model_name)
+    load_kwargs = {
+        "num_labels": NUM_LABELS,
+        "id2label": id2label,
+        "label2id": label2id,
+    }
+    if config.get("ignore_mismatched_sizes"):
+        load_kwargs["ignore_mismatched_sizes"] = True
+    model = AutoModelForSequenceClassification.from_pretrained(model_name, **load_kwargs)
 
     training_args = TrainingArguments(
         output_dir=str(checkpoint_dir),

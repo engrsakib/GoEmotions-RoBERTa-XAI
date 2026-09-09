@@ -6,8 +6,8 @@ track: singlelabel
 split_mode: stratified
 dedup_policy: consensus
 
-# Primary transformer (see src/training/model_registry.py for all 8 models)
-primary_model_id: m4_roberta_focal
+# Primary transformer (see src/training/model_registry.py for Top-10 models)
+primary_model_id: m6_deberta_v3
 model_name: roberta-base
 model_id: m4_roberta_focal
 max_length: 128

@@ -107,20 +107,26 @@ Knowledge distillation (`src/training/distill.py`) transfers Track A teacher log
 
 ---
 
-## IV. Model Suite (Eight Algorithms)
+## IV. Model Suite (Top-10 Advanced Models)
 
-| ID | Algorithm | Role |
-|----|-----------|------|
-| M1 | TF-IDF + Logistic Regression | Classical baseline |
-| M2 | TF-IDF + Linear SVM | Linear baseline |
-| M3 | RoBERTa-base + Weighted CE | Production encoder (balanced loss) |
-| M4 | RoBERTa-base + Focal Loss | **Recommended** (imbalance) |
-| M5 | DistilRoBERTa-base | Efficient deployment |
-| M6 | DeBERTa-v3-base | Accuracy alternative |
-| M7 | XLM-RoBERTa-base | Multilingual robustness |
-| M8 | Captum Integrated Gradients | XAI heatmaps |
+| Rank | ID | HuggingFace checkpoint | Track | Loss | Paper anchor | Role |
+|------|-----|------------------------|-------|------|--------------|------|
+| 1 | M6 | `microsoft/deberta-v3-base` | A multilabel | asymmetric | 3, 6 | **IEEE primary (E2)** |
+| 2 | M10 | `microsoft/deberta-v3-large` | A multilabel | asymmetric | 3, 6 | Max accuracy (E9) |
+| 3 | M9 | `cardiffnlp/twitter-roberta-base` | A + B | asymmetric / weighted CE | 3 | Social domain (E7, E10) |
+| 4 | M11 | `cardiffnlp/twitter-roberta-base-emotion` | A + B | asymmetric / weighted CE | 3, 16 | Emotion transfer (E8) |
+| 5 | M12 | `vinai/bertweet-base` | A multilabel | asymmetric | 3, 7 | Short social text |
+| 6 | M3 | `roberta-base` | B singlelabel | weighted CE | 6, 14 | Production + distill student |
+| 7 | M13 | `roberta-large` | B singlelabel | weighted CE | 14 | Higher-capacity production |
+| 8 | M5 | `distilroberta-base` | B distilled | KL + CE | 14 | Fast deploy (E4 student) |
+| 9 | M7 | `xlm-roberta-base` | A / B | asymmetric | 7 | Multilingual ablation |
+| 10 | M1 / M2 | TF-IDF + LogReg / SVM | — | BR | 6 | Sanity floor (E0) |
 
-See [02-eight-models.md](02-eight-models.md) for selection guidance.
+**XAI (not ranked):** M8 Captum Integrated Gradients on the winning Track B encoder.
+
+Per-model hyperparameters: `config/model_profiles.yaml`. Registry: `src/training/model_registry.py`.
+
+See [02-eight-models.md](02-eight-models.md) for legacy selection notes.
 
 ---
 
@@ -148,14 +154,22 @@ When `balance_strategy ≠ none`, class weights are disabled by default to avoid
 
 ### Experiment Matrix (`scripts/run_experiments.py`)
 
-| ID | Track | Model | Loss | Dedup |
-|----|-------|-------|------|-------|
-| E0 | — | TF-IDF baselines | — | consensus |
-| E1 | multilabel | RoBERTa | weighted BCE | consensus |
-| E2 | multilabel | DeBERTa-v3 | asymmetric | consensus + official split |
-| E3 | singlelabel | RoBERTa focal | weighted CE | consensus |
-| E4 | singlelabel | RoBERTa | distillation | consensus |
-| E5 | ablation | — | — | none / global_first / hybrid |
+| ID | Track | Model | Loss | Purpose |
+|----|-------|-------|------|---------|
+| E0 | — | TF-IDF baselines | — | Floor (Paper 6) |
+| E1 | multilabel | RoBERTa-base | weighted BCE | Transformer baseline |
+| **E2** | multilabel | DeBERTa-v3-base | asymmetric | **IEEE main candidate** |
+| **E7** | multilabel | Twitter-RoBERTa-base | asymmetric | Social domain (Paper 3) |
+| **E8** | multilabel | Twitter-RoBERTa-emotion | asymmetric | Transfer ablation (4→7 head) |
+| **E9** | multilabel | DeBERTa-v3-large | asymmetric | Max accuracy |
+| E3 | singlelabel | RoBERTa focal | weighted CE | Production baseline |
+| **E10** | singlelabel | Twitter-RoBERTa-base | weighted CE | Social production |
+| E4 | singlelabel | DistilRoBERTa | distillation | Deploy student from best teacher |
+| E5 | ablation | — | — | Dedup policy comparison |
+
+**DeBERTa tuning grid (validation only):** `python scripts/run_deberta_tuning.py` — LR {1e-5, 1.5e-5, 2e-5}, γ⁻ {3, 4, 5}, clip {0.03, 0.05, 0.07}.
+
+**Teacher selection:** Highest validation macro-F1 among E2, E7, E8, E9 → `python scripts/run_teacher_distill.py`.
 
 ---
 
