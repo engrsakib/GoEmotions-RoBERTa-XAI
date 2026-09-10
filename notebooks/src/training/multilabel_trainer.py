@@ -20,8 +20,15 @@ from transformers import (
 from src.data.label_mapping import ID2LABEL, LABEL2ID, NUM_LABELS
 from src.data.multi_label_mapping import str_to_multi_hot
 from src.paths import CHECKPOINTS_DIR, LOGS_DIR
+from src.training.asl_config import (
+    DEFAULT_CLIP,
+    DEFAULT_GAMMA_NEG,
+    DEFAULT_GAMMA_POS,
+    resolve_asl_hyperparameters,
+)
 from src.training.asymmetric_loss import AsymmetricLoss
 from src.training.focal_loss import compute_class_weights
+from src.training.loss_logging import AsymmetricLossHyperparamCallback
 from src.training.metrics import hf_compute_multilabel_metrics
 from src.training.trainer_setup import load_transformer_tokenizer
 
@@ -64,14 +71,17 @@ class MultiLabelTrainer(Trainer):
         *args,
         loss_type: str = "asymmetric",
         pos_weights: torch.Tensor | None = None,
-        asymmetric_gamma_pos: float = 0.0,
-        asymmetric_gamma_neg: float = 4.0,
-        asymmetric_clip: float = 0.05,
+        asymmetric_gamma_pos: float = DEFAULT_GAMMA_POS,
+        asymmetric_gamma_neg: float = DEFAULT_GAMMA_NEG,
+        asymmetric_clip: float = DEFAULT_CLIP,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.loss_type = loss_type
         self.pos_weights = pos_weights
+        self.asymmetric_gamma_pos = asymmetric_gamma_pos
+        self.asymmetric_gamma_neg = asymmetric_gamma_neg
+        self.asymmetric_clip = asymmetric_clip
         self.asymmetric_loss = AsymmetricLoss(
             gamma_pos=asymmetric_gamma_pos,
             gamma_neg=asymmetric_gamma_neg,
@@ -151,10 +161,14 @@ def build_multilabel_trainer(
         logging_steps=config.get("logging_steps", 50),
         fp16=config.get("fp16", False) and torch.cuda.is_available(),
         gradient_accumulation_steps=config.get("gradient_accumulation_steps", 1),
-        report_to=[],
+        report_to=config.get("report_to", []),
+        run_name=config.get("run_name"),
     )
 
     loss_type = config.get("loss_type", "asymmetric")
+    asymmetric_gamma_pos = config.get("asymmetric_gamma_pos", DEFAULT_GAMMA_POS)
+    asymmetric_gamma_neg = config.get("asymmetric_gamma_neg", DEFAULT_GAMMA_NEG)
+    asymmetric_clip = config.get("asymmetric_clip", DEFAULT_CLIP)
     pos_weights = None
     if train_labels is None:
         train_labels = [row for row in train_dataset["labels"]]
@@ -170,6 +184,8 @@ def build_multilabel_trainer(
                 early_stopping_patience=config.get("early_stopping_patience", 2),
             )
         )
+    if loss_type == "asymmetric":
+        callbacks.append(AsymmetricLossHyperparamCallback(resolve_asl_hyperparameters(config)))
 
     trainer = MultiLabelTrainer(
         model=model,
@@ -181,8 +197,8 @@ def build_multilabel_trainer(
         callbacks=callbacks,
         loss_type=loss_type,
         pos_weights=pos_weights,
-        asymmetric_gamma_pos=config.get("asymmetric_gamma_pos", 0.0),
-        asymmetric_gamma_neg=config.get("asymmetric_gamma_neg", 4.0),
-        asymmetric_clip=config.get("asymmetric_clip", 0.05),
+        asymmetric_gamma_pos=asymmetric_gamma_pos,
+        asymmetric_gamma_neg=asymmetric_gamma_neg,
+        asymmetric_clip=asymmetric_clip,
     )
     return trainer, tokenizer, model

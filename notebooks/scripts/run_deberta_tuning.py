@@ -15,11 +15,15 @@ if str(NOTEBOOKS_DIR) not in sys.path:
 
 from src.data.pipeline import load_config
 from src.paths import EXPORTS_DIR, ensure_artifact_dirs
-from src.training.model_profiles import get_deberta_tuning_grid
+from src.training.model_profiles import get_asl_tuning_grid, get_deberta_tuning_grid
 from scripts.run_experiments import merge_config, run_experiment
 
 
-def run_tuning_grid(skip_train: bool = False, max_samples: int | None = None) -> list[dict]:
+def run_tuning_grid(
+    skip_train: bool = False,
+    max_samples: int | None = None,
+    grid: str = "asl",
+) -> list[dict]:
     base = load_config()
     if max_samples:
         base["max_samples"] = max_samples
@@ -33,10 +37,14 @@ def run_tuning_grid(skip_train: bool = False, max_samples: int | None = None) ->
         "dedup_policy": "consensus",
         "balance_strategy": "none",
     }
-    grid = get_deberta_tuning_grid()
+    if grid == "lr":
+        grid_runs = get_deberta_tuning_grid()
+    else:
+        grid_runs = get_asl_tuning_grid(base)
+    print(f"ASL tuning grid ({grid}): {len(grid_runs)} runs")
     results = []
 
-    for idx, overrides in enumerate(grid):
+    for idx, overrides in enumerate(grid_runs):
         run_id = f"E2-T{idx + 1}"
         config = merge_config(base, e2_preset)
         config.update(overrides)
@@ -111,9 +119,19 @@ def main() -> None:
         default=None,
         help="Smoke test: cap rows per grid run (epochs=1)",
     )
+    parser.add_argument(
+        "--grid",
+        choices=("asl", "lr"),
+        default="asl",
+        help="asl: gamma_neg/gamma_pos/clip Cartesian grid (default); lr: legacy LR grid",
+    )
     args = parser.parse_args()
     ensure_artifact_dirs()
-    run_tuning_grid(skip_train=args.skip_train, max_samples=args.max_samples)
+    run_tuning_grid(
+        skip_train=args.skip_train,
+        max_samples=args.max_samples,
+        grid=args.grid,
+    )
 
 
 if __name__ == "__main__":

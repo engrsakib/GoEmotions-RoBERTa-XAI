@@ -34,9 +34,18 @@ use_focal_loss: false
 focal_gamma: 1.0
 use_class_weights: true
 class_weight_mode: sqrt_inverse
-asymmetric_gamma_pos: 0
-asymmetric_gamma_neg: 4
+# Clipped Asymmetric Loss (Track A / m6_deberta_v3)
+asymmetric_gamma_pos: 1.0
+asymmetric_gamma_neg: 4.0
 asymmetric_clip: 0.05
+# ASL Macro-F1 tuning grids (scripts/run_deberta_tuning.py --grid asl)
+asl_tuning_grids:
+  asymmetric_gamma_neg: [2.0, 3.0, 4.0]
+  asymmetric_gamma_pos: [0.0, 1.0]
+  asymmetric_clip: [0.0, 0.05, 0.1]
+
+# Experiment tracking (wandb | mlflow | tensorboard); empty = console only
+report_to: []
 
 # Distillation (Track B from Track A teacher)
 distill: false

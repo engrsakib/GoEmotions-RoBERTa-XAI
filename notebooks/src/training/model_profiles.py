@@ -44,6 +44,17 @@ def get_deberta_tuning_grid() -> list[dict]:
     return list(data.get("deberta_tuning_grid") or [])
 
 
+def get_asl_tuning_grid(config: dict | None = None) -> list[dict]:
+    """Cartesian product of ASL hyperparameter grids for Macro-F1 search."""
+    from src.training.asl_config import build_asl_tuning_grid
+
+    merged_config = dict(config or {})
+    data = _load_profiles_file()
+    profile = (data.get("profiles") or {}).get("m6_deberta_v3") or {}
+    lr = merged_config.get("learning_rate", profile.get("learning_rate", 1.5e-5))
+    return build_asl_tuning_grid(merged_config, extra_overrides={"learning_rate": lr})
+
+
 def resolve_model_checkpoint(model_id: str, checkpoints_dir: Path | None = None) -> str | None:
     """Return path to saved model weights for a registry model_id."""
     from src.paths import CHECKPOINTS_DIR

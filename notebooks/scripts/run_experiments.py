@@ -226,11 +226,14 @@ def run_experiment(
                 },
             )
 
+        from src.training.asl_config import resolve_asl_hyperparameters
+
         payload = {
             "experiment_id": exp_id,
             "track": track,
             "model_id": model_id,
             "stats": stats,
+            "asl_hyperparameters": resolve_asl_hyperparameters(exp_config),
             "eval_metrics": threshold_result["val_metrics_thresholded"],
             "test_metrics_default": threshold_result["test_metrics_default"],
             "test_metrics_thresholded": threshold_result["test_metrics_thresholded"],
