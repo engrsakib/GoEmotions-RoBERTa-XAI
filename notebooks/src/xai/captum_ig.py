@@ -9,6 +9,8 @@ import torch
 from captum.attr import LayerIntegratedGradients
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
+from src.xai.embedding_utils import get_token_embedding_layer
+
 
 def _normalize_scores(values: np.ndarray) -> np.ndarray:
     if values.size == 0:
@@ -49,7 +51,7 @@ def compute_integrated_gradients(
         outputs = model(input_ids=ids, attention_mask=mask)
         return outputs.logits[:, target_class]
 
-    embedding_layer = model.roberta.embeddings
+    embedding_layer = get_token_embedding_layer(model)
     lig = LayerIntegratedGradients(forward_func, embedding_layer)
 
     pad_id = tokenizer.pad_token_id or 1
