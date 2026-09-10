@@ -19,7 +19,8 @@ from transformers import (
 )
 
 from src.data.label_mapping import ID2LABEL, LABEL2ID, NUM_LABELS
-from src.paths import CHECKPOINTS_DIR, EXPORTS_DIR, LOGS_DIR, PROCESSED_DIR
+from src.paths import CHECKPOINTS_DIR, EXPORTS_DIR, PROCESSED_DIR
+from src.training.training_args_builder import build_training_arguments
 from src.training.focal_loss import (
     FocalLossTrainer,
     WeightedCETrainer,
@@ -131,26 +132,10 @@ def build_trainer(
         load_kwargs["ignore_mismatched_sizes"] = True
     model = AutoModelForSequenceClassification.from_pretrained(model_name, **load_kwargs)
 
-    training_args = TrainingArguments(
-        output_dir=str(checkpoint_dir),
+    training_args = build_training_arguments(
+        config,
+        checkpoint_dir,
         num_train_epochs=config.get("epochs", 4),
-        per_device_train_batch_size=config.get("batch_size", 16),
-        per_device_eval_batch_size=config.get("eval_batch_size", 16),
-        learning_rate=config.get("learning_rate", 2e-5),
-        weight_decay=config.get("weight_decay", 0.01),
-        warmup_ratio=config.get("warmup_ratio", 0.1),
-        max_grad_norm=config.get("max_grad_norm", 1.0),
-        optim=config.get("optim", "adamw_torch"),
-        lr_scheduler_type=config.get("lr_scheduler_type", "cosine"),
-        eval_strategy=config.get("eval_strategy", "epoch"),
-        save_strategy=config.get("save_strategy", "epoch"),
-        load_best_model_at_end=True,
-        metric_for_best_model=config.get("metric_for_best_model", "eval_macro_f1"),
-        greater_is_better=config.get("greater_is_better", True),
-        logging_dir=str(LOGS_DIR),
-        logging_steps=config.get("logging_steps", 50),
-        fp16=config.get("fp16", False) and torch.cuda.is_available(),
-        gradient_accumulation_steps=config.get("gradient_accumulation_steps", 1),
         report_to=[],
     )
 

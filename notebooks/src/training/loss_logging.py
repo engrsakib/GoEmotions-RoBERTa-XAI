@@ -8,6 +8,7 @@ from typing import Any
 from transformers import TrainerCallback
 
 from src.training.asl_config import resolve_asl_hyperparameters
+from src.training.training_args_builder import resolve_optimizer_hyperparameters
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,52 @@ def log_asymmetric_loss_from_config(config: dict[str, Any]) -> dict[str, float]:
     params = resolve_asl_hyperparameters(config)
     log_asymmetric_loss_hyperparameters(params)
     return params
+
+
+def log_optimizer_hyperparameters(
+    params: dict[str, float | str],
+    *,
+    prefix: str = "Optimizer",
+) -> None:
+    """Emit optimizer/scheduler hyperparameters to console and experiment trackers."""
+    message = (
+        f"{prefix}: lr={params['learning_rate']}, weight_decay={params['weight_decay']}, "
+        f"scheduler={params['lr_scheduler_type']}, warmup_ratio={params['warmup_ratio']}, "
+        f"adam_eps={params['adam_epsilon']}, max_grad_norm={params['max_grad_norm']}"
+    )
+    logger.info(message)
+    print(message)
+    try:
+        import wandb
+
+        if wandb.run is not None:
+            wandb.config.update({f"optim/{k}": v for k, v in params.items()})
+    except ImportError:
+        pass
+    try:
+        import mlflow
+
+        if mlflow.active_run() is not None:
+            mlflow.log_params({f"optim_{k}": v for k, v in params.items()})
+    except ImportError:
+        pass
+
+
+class OptimizerHyperparamCallback(TrainerCallback):
+    """Log optimizer/scheduler hyperparameters at training start."""
+
+    def __init__(self, params: dict[str, float | str]):
+        self.params = params
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        log_optimizer_hyperparameters(self.params)
+        return control
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if logs is None or state.global_step > 1:
+            return control
+        logs.update({f"optim/{k}": v for k, v in self.params.items()})
+        return control
 
 
 class AsymmetricLossHyperparamCallback(TrainerCallback):

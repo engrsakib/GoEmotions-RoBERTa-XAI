@@ -22,6 +22,11 @@ from src.training.model_profiles import find_best_teacher_experiment, resolve_mo
 from src.training.model_registry import apply_model_to_config, get_model
 from src.training.multilabel_trainer import build_multilabel_trainer, prepare_multilabel_hf_datasets
 from src.training.thresholds import save_thresholds
+from src.training.training_args_builder import (
+    compute_train_val_overfit_report,
+    resolve_optimizer_hyperparameters,
+)
+from src.training.training_precision import train_with_precision_fallback
 from src.training.trainer_setup import (
     build_trainer,
     evaluate_multilabel_with_threshold_tuning,
@@ -192,10 +197,23 @@ def run_experiment(
         train_ds, val_ds, test_ds, train_labels = prepare_multilabel_hf_datasets(
             train_df, val_df, test_df, tokenizer, max_length=exp_config["max_length"]
         )
-        trainer, tokenizer, model = build_multilabel_trainer(
-            exp_config, train_ds, val_ds, train_labels=train_labels
+        trainer_holder: dict = {}
+
+        def _multilabel_trainer_factory(cfg: dict):
+            built = build_multilabel_trainer(cfg, train_ds, val_ds, train_labels=train_labels)
+            trainer_holder["trainer"] = built[0]
+            trainer_holder["tokenizer"] = built[1]
+            trainer_holder["model"] = built[2]
+            return built[0]
+
+        trainer, precision_used, _nan_detected = train_with_precision_fallback(
+            _multilabel_trainer_factory,
+            exp_config,
         )
-        trainer.train()
+        tokenizer = trainer_holder["tokenizer"]
+        model = trainer_holder["model"]
+
+        overfit_report = compute_train_val_overfit_report(trainer, train_ds, exp_config)
         export_dir = CHECKPOINTS_DIR / model_id
         trainer.save_model(str(export_dir))
         tokenizer.save_pretrained(str(export_dir))
@@ -233,7 +251,11 @@ def run_experiment(
             "track": track,
             "model_id": model_id,
             "stats": stats,
+            "optimizer_hyperparameters": resolve_optimizer_hyperparameters(exp_config),
+            "training_precision": precision_used,
             "asl_hyperparameters": resolve_asl_hyperparameters(exp_config),
+            "train_val_macro_f1_gap": overfit_report["train_val_macro_f1_gap"],
+            "recommended_weight_decay": overfit_report["recommended_weight_decay"],
             "eval_metrics": threshold_result["val_metrics_thresholded"],
             "test_metrics_default": threshold_result["test_metrics_default"],
             "test_metrics_thresholded": threshold_result["test_metrics_thresholded"],

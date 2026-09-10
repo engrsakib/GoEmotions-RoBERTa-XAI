@@ -15,7 +15,7 @@ if str(NOTEBOOKS_DIR) not in sys.path:
 
 from src.data.pipeline import load_config
 from src.paths import EXPORTS_DIR, ensure_artifact_dirs
-from src.training.model_profiles import get_asl_tuning_grid, get_deberta_tuning_grid
+from src.training.model_profiles import get_asl_tuning_grid, get_deberta_tuning_grid, get_lr_tuning_grid
 from scripts.run_experiments import merge_config, run_experiment
 
 
@@ -38,7 +38,7 @@ def run_tuning_grid(
         "balance_strategy": "none",
     }
     if grid == "lr":
-        grid_runs = get_deberta_tuning_grid()
+        grid_runs = get_lr_tuning_grid(base) or get_deberta_tuning_grid()
     else:
         grid_runs = get_asl_tuning_grid(base)
     print(f"ASL tuning grid ({grid}): {len(grid_runs)} runs")

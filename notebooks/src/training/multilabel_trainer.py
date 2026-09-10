@@ -14,12 +14,11 @@ from transformers import (
     DataCollatorWithPadding,
     EarlyStoppingCallback,
     Trainer,
-    TrainingArguments,
 )
 
 from src.data.label_mapping import ID2LABEL, LABEL2ID, NUM_LABELS
 from src.data.multi_label_mapping import str_to_multi_hot
-from src.paths import CHECKPOINTS_DIR, LOGS_DIR
+from src.paths import CHECKPOINTS_DIR
 from src.training.asl_config import (
     DEFAULT_CLIP,
     DEFAULT_GAMMA_NEG,
@@ -28,9 +27,14 @@ from src.training.asl_config import (
 )
 from src.training.asymmetric_loss import AsymmetricLoss
 from src.training.focal_loss import compute_class_weights
-from src.training.loss_logging import AsymmetricLossHyperparamCallback
+from src.training.loss_logging import AsymmetricLossHyperparamCallback, OptimizerHyperparamCallback
 from src.training.metrics import hf_compute_multilabel_metrics
+from src.training.optimizer_utils import build_adamw_param_groups
 from src.training.trainer_setup import load_transformer_tokenizer
+from src.training.training_args_builder import (
+    build_training_arguments,
+    resolve_optimizer_hyperparameters,
+)
 
 
 def prepare_multilabel_hf_datasets(train_df, val_df, test_df, tokenizer, max_length: int = 128):
@@ -106,6 +110,16 @@ class MultiLabelTrainer(Trainer):
 
         return (loss, outputs) if return_outputs else loss
 
+    def create_optimizer(self):
+        if self.optimizer is not None:
+            return self.optimizer
+
+        opt_model = self.model
+        optimizer_cls, optimizer_kwargs = self.get_optimizer_cls_and_kwargs(self.args, opt_model)
+        param_groups = build_adamw_param_groups(opt_model, self.args.weight_decay)
+        self.optimizer = optimizer_cls(param_groups, **optimizer_kwargs)
+        return self.optimizer
+
 
 def _multilabel_pos_weights(train_labels: list, num_classes: int) -> torch.Tensor:
     """Compute pos_weight for BCE from multi-hot label vectors."""
@@ -141,29 +155,7 @@ def build_multilabel_trainer(
         load_kwargs["ignore_mismatched_sizes"] = True
     model = AutoModelForSequenceClassification.from_pretrained(model_name, **load_kwargs)
 
-    training_args = TrainingArguments(
-        output_dir=str(checkpoint_dir),
-        num_train_epochs=config.get("epochs", 5),
-        per_device_train_batch_size=config.get("batch_size", 16),
-        per_device_eval_batch_size=config.get("eval_batch_size", 16),
-        learning_rate=config.get("learning_rate", 2e-5),
-        weight_decay=config.get("weight_decay", 0.01),
-        warmup_ratio=config.get("warmup_ratio", 0.1),
-        max_grad_norm=config.get("max_grad_norm", 1.0),
-        optim=config.get("optim", "adamw_torch"),
-        lr_scheduler_type=config.get("lr_scheduler_type", "cosine"),
-        eval_strategy=config.get("eval_strategy", "epoch"),
-        save_strategy=config.get("save_strategy", "epoch"),
-        load_best_model_at_end=True,
-        metric_for_best_model=config.get("metric_for_best_model", "eval_macro_f1"),
-        greater_is_better=True,
-        logging_dir=str(LOGS_DIR),
-        logging_steps=config.get("logging_steps", 50),
-        fp16=config.get("fp16", False) and torch.cuda.is_available(),
-        gradient_accumulation_steps=config.get("gradient_accumulation_steps", 1),
-        report_to=config.get("report_to", []),
-        run_name=config.get("run_name"),
-    )
+    training_args = build_training_arguments(config, checkpoint_dir)
 
     loss_type = config.get("loss_type", "asymmetric")
     asymmetric_gamma_pos = config.get("asymmetric_gamma_pos", DEFAULT_GAMMA_POS)
@@ -184,6 +176,7 @@ def build_multilabel_trainer(
                 early_stopping_patience=config.get("early_stopping_patience", 2),
             )
         )
+    callbacks.append(OptimizerHyperparamCallback(resolve_optimizer_hyperparameters(config)))
     if loss_type == "asymmetric":
         callbacks.append(AsymmetricLossHyperparamCallback(resolve_asl_hyperparameters(config)))
 

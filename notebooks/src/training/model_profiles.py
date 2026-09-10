@@ -44,6 +44,20 @@ def get_deberta_tuning_grid() -> list[dict]:
     return list(data.get("deberta_tuning_grid") or [])
 
 
+def get_lr_tuning_grid(config: dict | None = None) -> list[dict]:
+    """Build LR sweep from train_config learning_rate_grid and m6 ASL defaults."""
+    merged = dict(config or {})
+    lr_values = merged.get("learning_rate_grid") or [1.0e-5, 1.5e-5, 2.0e-5]
+    data = _load_profiles_file()
+    profile = (data.get("profiles") or {}).get("m6_deberta_v3") or {}
+    asl_defaults = {
+        "asymmetric_gamma_neg": profile.get("asymmetric_gamma_neg", 4.0),
+        "asymmetric_gamma_pos": profile.get("asymmetric_gamma_pos", 1.0),
+        "asymmetric_clip": profile.get("asymmetric_clip", 0.05),
+    }
+    return [{**asl_defaults, "learning_rate": lr} for lr in lr_values]
+
+
 def get_asl_tuning_grid(config: dict | None = None) -> list[dict]:
     """Cartesian product of ASL hyperparameter grids for Macro-F1 search."""
     from src.training.asl_config import build_asl_tuning_grid

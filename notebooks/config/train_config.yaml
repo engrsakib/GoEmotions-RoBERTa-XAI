@@ -17,16 +17,30 @@ num_labels: 7
 epochs: 5
 batch_size: 16
 eval_batch_size: 16
-learning_rate: 2.0e-5
-weight_decay: 0.01
-warmup_ratio: 0.1
-max_grad_norm: 1.0
-fp16: true
 gradient_accumulation_steps: 1
 
-# Optimizer / scheduler
+# DeBERTa-v3 / transformer optimization (m6 Track A)
+learning_rate: 1.5e-5
+learning_rate_grid: [1.0e-5, 1.5e-5, 2.0e-5]
+
 optim: adamw_torch
-lr_scheduler_type: cosine
+adam_beta1: 0.9
+adam_beta2: 0.999
+adam_epsilon: 1.0e-6
+
+lr_scheduler_type: cosine  # alt: linear (strict warmup decay)
+warmup_ratio: 0.10
+
+weight_decay: 0.01
+weight_decay_overfit: 0.05  # use when train-val macro-F1 gap > threshold
+overfit_gap_threshold: 0.03  # 3 percentage points
+
+max_grad_norm: 1.0
+
+# Mixed precision (fp16 preferred; auto-fallback on NaN — see training_precision.py)
+fp16: true
+bf16: false  # set true on Ampere+ if fp16 unstable
+fp16_fallback_enabled: true  # retry train with bf16 then fp32 on NaN loss
 
 # Loss (focal | weighted_ce | asymmetric)
 loss_type: weighted_ce
