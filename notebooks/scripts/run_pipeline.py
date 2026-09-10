@@ -44,10 +44,13 @@ from src.data.reporting import load_stats_from_disk, log_pipeline_stats
 from src.paths import EXPORTS_DIR, PROCESSED_DIR, ensure_artifact_dirs
 from src.training.baselines import run_all_baselines
 from src.training.model_registry import apply_model_to_config, default_transformer_id, get_model
+from src.training.thresholds import save_thresholds
 from src.training.trainer_setup import (
     build_trainer,
+    evaluate_multilabel_with_threshold_tuning,
     evaluate_with_threshold_tuning,
     export_model,
+    load_transformer_tokenizer,
     prepare_hf_datasets,
 )
 from src.training.multilabel_trainer import build_multilabel_trainer, prepare_multilabel_hf_datasets
@@ -185,7 +188,7 @@ def main() -> None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Device: {device} | HF: {config['model_name']}")
 
-        tokenizer = AutoTokenizer.from_pretrained(config["model_name"])
+        tokenizer = load_transformer_tokenizer(config["model_name"])
         track = config.get("track", "singlelabel")
 
         if track == "multilabel":
@@ -197,10 +200,24 @@ def main() -> None:
             )
             if run_all or args.stage == "train":
                 trainer.train()
-            print("\n=== Stage 5: Evaluation (multi-label) ===")
-            eval_metrics = trainer.evaluate()
-            eval_result = {"test_metrics": eval_metrics, "track": "multilabel"}
-            print(json.dumps(eval_metrics, indent=2))
+            print("\n=== Stage 5: Evaluation (multi-label + threshold tuning) ===")
+            eval_result = evaluate_multilabel_with_threshold_tuning(
+                trainer, val_ds, test_ds, config=config
+            )
+            eval_result["track"] = "multilabel"
+            default_m = eval_result["test_metrics_default"]
+            tuned_m = eval_result["test_metrics_thresholded"]
+            print(
+                f"{model_id} default (0.5)     test macro-F1={default_m['macro_f1']:.4f} "
+                f"P={default_m['macro_precision']:.4f} R={default_m['macro_recall']:.4f}"
+            )
+            print(
+                f"{model_id} thresholded       test macro-F1={tuned_m['macro_f1']:.4f} "
+                f"P={tuned_m['macro_precision']:.4f} R={tuned_m['macro_recall']:.4f}"
+            )
+            print(f"Val-test macro-F1 gap: {eval_result['val_test_macro_f1_gap']:.4f}")
+            if eval_result.get("thresholds"):
+                print(f"Per-class thresholds: {eval_result['per_class_thresholds']}")
         else:
             train_ds, val_ds, test_ds, train_labels = prepare_hf_datasets(
                 train_df, val_df, test_df, tokenizer, max_length=config["max_length"]
@@ -233,7 +250,17 @@ def main() -> None:
             "balance_strategy": config.get("balance_strategy", "none"),
         }
         if track == "multilabel":
-            payload["eval_metrics"] = eval_result.get("test_metrics", {})
+            payload.update({
+                "test_metrics_default": eval_result.get("test_metrics_default"),
+                "test_metrics_thresholded": eval_result.get("test_metrics_thresholded"),
+                "test_metrics": eval_result.get("test_metrics"),
+                "val_metrics_default": eval_result.get("val_metrics_default"),
+                "val_metrics_thresholded": eval_result.get("val_metrics_thresholded"),
+                "val_test_macro_f1_gap": eval_result.get("val_test_macro_f1_gap"),
+                "thresholds": eval_result.get("thresholds"),
+                "threshold_log": eval_result.get("threshold_log"),
+                "per_class_thresholds": eval_result.get("per_class_thresholds"),
+            })
         else:
             payload.update({
                 "transformer_test_macro_f1": eval_result["test_metrics"]["macro_f1"],
@@ -274,6 +301,8 @@ def main() -> None:
             thresholds = np.array(eval_result["thresholds"])
             threshold_metadata = {
                 **(eval_result.get("threshold_log") or {}),
+                "per_class_thresholds": eval_result.get("per_class_thresholds"),
+                "track": track,
                 "uncertain_threshold": config.get("uncertain_threshold", 0.35),
             }
         export_dir = export_model(

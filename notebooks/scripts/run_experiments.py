@@ -21,8 +21,10 @@ from src.training.baselines import run_all_baselines
 from src.training.model_profiles import find_best_teacher_experiment, resolve_model_checkpoint
 from src.training.model_registry import apply_model_to_config, get_model
 from src.training.multilabel_trainer import build_multilabel_trainer, prepare_multilabel_hf_datasets
+from src.training.thresholds import save_thresholds
 from src.training.trainer_setup import (
     build_trainer,
+    evaluate_multilabel_with_threshold_tuning,
     evaluate_with_threshold_tuning,
     export_model,
     load_transformer_tokenizer,
@@ -194,18 +196,49 @@ def run_experiment(
             exp_config, train_ds, val_ds, train_labels=train_labels
         )
         trainer.train()
-        eval_result = trainer.evaluate()
-        test_result = trainer.evaluate(test_ds)
         export_dir = CHECKPOINTS_DIR / model_id
         trainer.save_model(str(export_dir))
         tokenizer.save_pretrained(str(export_dir))
+
+        threshold_result = evaluate_multilabel_with_threshold_tuning(
+            trainer, val_ds, test_ds, config=exp_config
+        )
+        default_m = threshold_result["test_metrics_default"]
+        tuned_m = threshold_result["test_metrics_thresholded"]
+        print(
+            f"{exp_id} default (0.5)     test macro-F1={default_m['macro_f1']:.4f} "
+            f"P={default_m['macro_precision']:.4f} R={default_m['macro_recall']:.4f}"
+        )
+        print(
+            f"{exp_id} thresholded       test macro-F1={tuned_m['macro_f1']:.4f} "
+            f"P={tuned_m['macro_precision']:.4f} R={tuned_m['macro_recall']:.4f}"
+        )
+        print(f"Per-class thresholds: {threshold_result['per_class_thresholds']}")
+
+        if threshold_result.get("thresholds"):
+            save_thresholds(
+                __import__("numpy").array(threshold_result["thresholds"]),
+                export_dir / "thresholds.json",
+                metadata={
+                    **(threshold_result.get("threshold_log") or {}),
+                    "per_class_thresholds": threshold_result["per_class_thresholds"],
+                    "track": "multilabel",
+                },
+            )
+
         payload = {
             "experiment_id": exp_id,
             "track": track,
             "model_id": model_id,
             "stats": stats,
-            "eval_metrics": eval_result,
-            "test_metrics": test_result,
+            "eval_metrics": threshold_result["val_metrics_thresholded"],
+            "test_metrics_default": threshold_result["test_metrics_default"],
+            "test_metrics_thresholded": threshold_result["test_metrics_thresholded"],
+            "test_metrics": threshold_result["test_metrics_thresholded"],
+            "val_test_macro_f1_gap": threshold_result["val_test_macro_f1_gap"],
+            "thresholds": threshold_result.get("thresholds"),
+            "threshold_log": threshold_result.get("threshold_log"),
+            "per_class_thresholds": threshold_result.get("per_class_thresholds"),
         }
     else:
         tokenizer = load_transformer_tokenizer(exp_config["model_name"])

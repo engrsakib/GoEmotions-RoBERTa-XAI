@@ -25,8 +25,19 @@ from src.training.focal_loss import (
     WeightedCETrainer,
     compute_class_weights,
 )
-from src.training.metrics import build_classification_report, build_confusion_matrix, hf_compute_metrics
-from src.training.thresholds import predict_with_thresholds, save_thresholds, softmax, tune_thresholds
+from src.training.metrics import (
+    build_classification_report,
+    build_confusion_matrix,
+    hf_compute_metrics,
+    multilabel_metrics_from_probs,
+)
+from src.training.thresholds import (
+    predict_with_thresholds,
+    save_thresholds,
+    softmax,
+    tune_multilabel_thresholds,
+    tune_thresholds,
+)
 
 
 def load_transformer_tokenizer(model_name: str):
@@ -217,6 +228,32 @@ def _predict_probs(trainer, dataset) -> tuple[np.ndarray, np.ndarray]:
     return probs, labels
 
 
+def _predict_multilabel_probs(trainer, dataset) -> tuple[np.ndarray, np.ndarray]:
+    """Sigmoid probabilities and multi-hot labels for Track A evaluation."""
+    model = trainer.model
+    model.eval()
+    dataloader = trainer.get_eval_dataloader(dataset)
+    all_logits: list[np.ndarray] = []
+    all_labels: list[np.ndarray] = []
+
+    with torch.no_grad():
+        for batch in dataloader:
+            labels = batch.pop("labels")
+            if isinstance(labels, torch.Tensor):
+                labels = labels.float()
+            batch = {k: v.to(model.device) for k, v in batch.items()}
+            logits = model(**batch).logits
+            all_logits.append(logits.cpu().numpy())
+            all_labels.append(labels.cpu().numpy())
+
+    logits_arr = np.concatenate(all_logits, axis=0)
+    labels_arr = np.concatenate(all_labels, axis=0)
+    probs = 1.0 / (1.0 + np.exp(-logits_arr))
+    if labels_arr.ndim == 1:
+        labels_arr = np.eye(probs.shape[1])[labels_arr.astype(int)]
+    return probs, labels_arr
+
+
 def evaluate_on_test(
     trainer,
     test_dataset,
@@ -309,6 +346,60 @@ def evaluate_with_threshold_tuning(
         ),
         "predictions": test_threshold_preds if thresholds is not None else test_argmax_preds,
         "labels": test_labels,
+    }
+
+
+def evaluate_multilabel_with_threshold_tuning(
+    trainer,
+    val_dataset,
+    test_dataset,
+    config: dict | None = None,
+    id2label: dict | None = None,
+) -> dict:
+    """Tune per-class sigmoid thresholds on validation; report default vs thresholded test metrics."""
+    id2label = id2label or ID2LABEL
+    config = config or {}
+
+    val_probs, val_labels = _predict_multilabel_probs(trainer, val_dataset)
+    test_probs, test_labels = _predict_multilabel_probs(trainer, test_dataset)
+
+    default_thresholds = np.full(NUM_LABELS, 0.5, dtype=np.float64)
+    val_metrics_default = multilabel_metrics_from_probs(val_probs, val_labels, default_thresholds)
+    test_metrics_default = multilabel_metrics_from_probs(test_probs, test_labels, default_thresholds)
+
+    thresholds = default_thresholds
+    threshold_log: dict = {}
+    if config.get("threshold_tuning", True):
+        thresholds, threshold_log = tune_multilabel_thresholds(
+            val_probs,
+            val_labels,
+            num_classes=NUM_LABELS,
+            step=config.get("threshold_search_step", 0.05),
+            threshold_min=config.get("multilabel_threshold_min", 0.1),
+            threshold_max=config.get("multilabel_threshold_max", 0.9),
+            min_precision=config.get("threshold_min_precision"),
+        )
+
+    val_metrics_thresholded = multilabel_metrics_from_probs(val_probs, val_labels, thresholds)
+    test_metrics_thresholded = multilabel_metrics_from_probs(test_probs, test_labels, thresholds)
+
+    val_test_gap = abs(
+        val_metrics_thresholded["macro_f1"] - test_metrics_thresholded["macro_f1"]
+    )
+    per_class_thresholds = {
+        id2label[i]: float(thresholds[i]) for i in range(NUM_LABELS)
+    }
+
+    return {
+        "val_metrics_default": val_metrics_default,
+        "val_metrics_thresholded": val_metrics_thresholded,
+        "test_metrics_default": test_metrics_default,
+        "test_metrics_thresholded": test_metrics_thresholded,
+        "test_metrics": test_metrics_thresholded,
+        "val_test_macro_f1_gap": round(val_test_gap, 4),
+        "thresholds": thresholds.tolist(),
+        "threshold_log": threshold_log,
+        "per_class_thresholds": per_class_thresholds,
     }
 
 

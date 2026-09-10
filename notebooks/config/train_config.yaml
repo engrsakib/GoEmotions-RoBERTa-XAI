@@ -53,6 +53,9 @@ threshold_tuning: true
 threshold_search_step: 0.05
 threshold_min_precision: 0.45
 uncertain_threshold: 0.35
+# Multi-label Track A (E2/m6): sigmoid threshold search range per class
+multilabel_threshold_min: 0.1
+multilabel_threshold_max: 0.9
 
 # Checkpointing
 metric_for_best_model: eval_macro_f1

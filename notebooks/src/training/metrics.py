@@ -72,16 +72,34 @@ def compute_multilabel_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     """Metrics for multi-label classification (Paper 6 protocol)."""
     from sklearn.metrics import f1_score, hamming_loss
 
-    macro_f1 = float(f1_score(y_true, y_pred, average="macro", zero_division=0))
+    macro_precision, macro_recall, macro_f1, _ = precision_recall_fscore_support(
+        y_true, y_pred, average="macro", zero_division=0
+    )
     micro_f1 = float(f1_score(y_true, y_pred, average="micro", zero_division=0))
     hamming = float(hamming_loss(y_true, y_pred))
     subset_acc = float((y_true == y_pred).all(axis=1).mean())
     return {
-        "macro_f1": macro_f1,
+        "macro_f1": float(macro_f1),
+        "macro_precision": float(macro_precision),
+        "macro_recall": float(macro_recall),
         "micro_f1": micro_f1,
         "hamming_loss": hamming,
         "subset_accuracy": subset_acc,
     }
+
+
+def multilabel_metrics_from_probs(
+    probs: np.ndarray,
+    labels: np.ndarray,
+    thresholds: np.ndarray,
+) -> dict:
+    """Apply per-class thresholds to sigmoid probs and compute multi-label metrics."""
+    from src.training.thresholds import predict_multilabel
+
+    if labels.ndim == 1:
+        labels = np.eye(probs.shape[1])[labels.astype(int)]
+    preds = predict_multilabel(probs, thresholds)
+    return compute_multilabel_metrics(labels, preds)
 
 
 def hf_compute_multilabel_metrics(eval_pred):
@@ -95,4 +113,11 @@ def hf_compute_multilabel_metrics(eval_pred):
     if labels.ndim == 1:
         labels = np.eye(probs.shape[1])[labels.astype(int)]
     metrics = compute_multilabel_metrics(labels, preds)
-    return metrics
+    return {
+        "macro_f1": metrics["macro_f1"],
+        "macro_precision": metrics["macro_precision"],
+        "macro_recall": metrics["macro_recall"],
+        "micro_f1": metrics["micro_f1"],
+        "hamming_loss": metrics["hamming_loss"],
+        "subset_accuracy": metrics["subset_accuracy"],
+    }
