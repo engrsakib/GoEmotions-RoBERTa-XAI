@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import torch
 from transformers import TrainerCallback
 
 from src.training.asl_config import resolve_asl_hyperparameters
@@ -99,6 +100,30 @@ class OptimizerHyperparamCallback(TrainerCallback):
         if logs is None or state.global_step > 1:
             return control
         logs.update({f"optim/{k}": v for k, v in self.params.items()})
+        return control
+
+
+def log_multilabel_class_weights(weights: torch.Tensor, id2label: dict | None = None) -> None:
+    """Log normalized per-class loss weights at training start."""
+    from src.data.label_mapping import ID2LABEL
+
+    id2label = id2label or ID2LABEL
+    parts = []
+    w = weights.detach().cpu().float()
+    for i in range(len(w)):
+        name = id2label.get(i, str(i))
+        parts.append(f"{name}={w[i].item():.3f}")
+    message = "Multilabel class weights: " + ", ".join(parts)
+    logger.info(message)
+    print(message)
+
+
+class MultilabelClassWeightCallback(TrainerCallback):
+    def __init__(self, weights):
+        self.weights = weights if isinstance(weights, torch.Tensor) else torch.tensor(weights)
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        log_multilabel_class_weights(self.weights)
         return control
 
 

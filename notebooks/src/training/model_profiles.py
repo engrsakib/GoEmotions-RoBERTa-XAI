@@ -44,6 +44,11 @@ def get_deberta_tuning_grid() -> list[dict]:
     return list(data.get("deberta_tuning_grid") or [])
 
 
+def get_ensemble_config() -> dict:
+    data = _load_profiles_file()
+    return dict(data.get("ensemble") or {})
+
+
 def get_lr_tuning_grid(config: dict | None = None) -> list[dict]:
     """Build LR sweep from train_config learning_rate_grid and m6 ASL defaults."""
     merged = dict(config or {})

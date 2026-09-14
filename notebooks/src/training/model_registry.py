@@ -116,7 +116,14 @@ MODEL_REGISTRY: dict[str, ModelSpec] = {
         name="RoBERTa-large Fine-Tuning",
         family="transformer",
         huggingface_id="roberta-large",
-        description="Higher-capacity Track B production encoder (Paper 14).",
+        description="Ensemble member; multilabel asymmetric loss (Track A).",
+    ),
+    "m14_electra_large": ModelSpec(
+        id="m14_electra_large",
+        name="ELECTRA-large Fine-Tuning",
+        family="transformer",
+        huggingface_id="google/electra-large-discriminator",
+        description="Ensemble member; multilabel asymmetric loss (Track A).",
     ),
 }
 

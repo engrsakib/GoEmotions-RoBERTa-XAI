@@ -7,6 +7,7 @@ from pathlib import Path
 
 import yaml
 
+from src.data.augmentation import augment_train_dataframe
 from src.data.balance import balance_train_df
 from src.data.clean import clean_dataframe
 from src.data.label_mapping import apply_label_mapping, label_map_payload
@@ -192,6 +193,10 @@ def run_data_pipeline(config: dict | None = None) -> dict:
         )
     else:
         train_balance_log = {"strategy": "none"}
+
+    if config.get("augmentation", {}).get("enabled"):
+        train_df, aug_log = augment_train_dataframe(train_df, config)
+        train_balance_log["augmentation"] = aug_log
 
     leakage = check_leakage(train_df, val_df, test_df)
     balance = check_class_balance(split_log)

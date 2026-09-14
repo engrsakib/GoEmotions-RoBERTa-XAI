@@ -25,9 +25,18 @@ from src.training.asl_config import (
     DEFAULT_GAMMA_POS,
     resolve_asl_hyperparameters,
 )
+from src.models.losses import (
+    WeightedAsymmetricLoss,
+    compute_multilabel_class_weights,
+    multi_hot_from_train_labels,
+)
 from src.training.asymmetric_loss import AsymmetricLoss
 from src.training.focal_loss import compute_class_weights
-from src.training.loss_logging import AsymmetricLossHyperparamCallback, OptimizerHyperparamCallback
+from src.training.loss_logging import (
+    AsymmetricLossHyperparamCallback,
+    MultilabelClassWeightCallback,
+    OptimizerHyperparamCallback,
+)
 from src.training.metrics import hf_compute_multilabel_metrics
 from src.training.optimizer_utils import build_adamw_param_groups
 from src.training.trainer_setup import load_transformer_tokenizer
@@ -78,6 +87,7 @@ class MultiLabelTrainer(Trainer):
         asymmetric_gamma_pos: float = DEFAULT_GAMMA_POS,
         asymmetric_gamma_neg: float = DEFAULT_GAMMA_NEG,
         asymmetric_clip: float = DEFAULT_CLIP,
+        asymmetric_loss_module: torch.nn.Module | None = None,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -86,7 +96,7 @@ class MultiLabelTrainer(Trainer):
         self.asymmetric_gamma_pos = asymmetric_gamma_pos
         self.asymmetric_gamma_neg = asymmetric_gamma_neg
         self.asymmetric_clip = asymmetric_clip
-        self.asymmetric_loss = AsymmetricLoss(
+        self.asymmetric_loss = asymmetric_loss_module or AsymmetricLoss(
             gamma_pos=asymmetric_gamma_pos,
             gamma_neg=asymmetric_gamma_neg,
             clip=asymmetric_clip,
@@ -169,6 +179,27 @@ def build_multilabel_trainer(
         if torch.cuda.is_available():
             pos_weights = pos_weights.cuda()
 
+    use_ml_class_weights = config.get("use_multilabel_class_weights")
+    if use_ml_class_weights is None:
+        use_ml_class_weights = config.get("balance_strategy", "none") == "none"
+
+    asymmetric_loss_module = None
+    class_weight_tensor = None
+    if loss_type == "asymmetric" and use_ml_class_weights:
+        multi_hot = multi_hot_from_train_labels(train_labels)
+        class_weight_tensor = compute_multilabel_class_weights(
+            multi_hot,
+            mode=config.get("multilabel_class_weight_mode", "inverse_freq"),
+        )
+        asymmetric_loss_module = WeightedAsymmetricLoss(
+            class_weight_tensor,
+            gamma_pos=asymmetric_gamma_pos,
+            gamma_neg=asymmetric_gamma_neg,
+            clip=asymmetric_clip,
+        )
+        if torch.cuda.is_available():
+            asymmetric_loss_module = asymmetric_loss_module.cuda()
+
     callbacks = []
     if config.get("early_stopping", False):
         callbacks.append(
@@ -179,6 +210,8 @@ def build_multilabel_trainer(
     callbacks.append(OptimizerHyperparamCallback(resolve_optimizer_hyperparameters(config)))
     if loss_type == "asymmetric":
         callbacks.append(AsymmetricLossHyperparamCallback(resolve_asl_hyperparameters(config)))
+    if class_weight_tensor is not None:
+        callbacks.append(MultilabelClassWeightCallback(class_weight_tensor))
 
     trainer = MultiLabelTrainer(
         model=model,
@@ -193,5 +226,6 @@ def build_multilabel_trainer(
         asymmetric_gamma_pos=asymmetric_gamma_pos,
         asymmetric_gamma_neg=asymmetric_gamma_neg,
         asymmetric_clip=asymmetric_clip,
+        asymmetric_loss_module=asymmetric_loss_module,
     )
     return trainer, tokenizer, model

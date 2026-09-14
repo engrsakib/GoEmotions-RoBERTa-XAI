@@ -97,6 +97,22 @@ EXPERIMENT_PRESETS: dict[str, dict] = {
         "dedup_policy": "consensus",
         "balance_strategy": "none",
     },
+    "E11": {
+        "track": "multilabel",
+        "model_id": "m13_roberta_large",
+        "loss_type": "asymmetric",
+        "split_mode": "official",
+        "dedup_policy": "consensus",
+        "balance_strategy": "none",
+    },
+    "E12": {
+        "track": "multilabel",
+        "model_id": "m14_electra_large",
+        "loss_type": "asymmetric",
+        "split_mode": "official",
+        "dedup_policy": "consensus",
+        "balance_strategy": "none",
+    },
     "E10": {
         "track": "singlelabel",
         "model_id": "m9_twitter_roberta",
@@ -243,6 +259,12 @@ def run_experiment(
                     "track": "multilabel",
                 },
             )
+
+        if exp_config.get("export_ensemble_probs"):
+            from src.eval.ensemble_probs import save_probs_from_trainer
+
+            prob_paths = save_probs_from_trainer(trainer, val_ds, test_ds, model_id)
+            print(f"Exported ensemble probabilities: {prob_paths}")
 
         from src.training.asl_config import resolve_asl_hyperparameters
 

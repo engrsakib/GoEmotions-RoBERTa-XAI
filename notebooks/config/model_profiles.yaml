@@ -77,8 +77,23 @@ profiles:
     learning_rate: 1.5e-5
     batch_size: 8
     gradient_accumulation_steps: 2
-    loss_type: weighted_ce
-    track: singlelabel
+    loss_type: asymmetric
+    asymmetric_gamma_pos: 1.0
+    asymmetric_gamma_neg: 4.0
+    asymmetric_clip: 0.05
+    track: multilabel
+    fp16: true
+
+  m14_electra_large:
+    learning_rate: 1.5e-5
+    batch_size: 8
+    gradient_accumulation_steps: 2
+    loss_type: asymmetric
+    asymmetric_gamma_pos: 1.0
+    asymmetric_gamma_neg: 4.0
+    asymmetric_clip: 0.05
+    track: multilabel
+    fp16: true
 
   m3_roberta_base:
     learning_rate: 2.0e-5
@@ -89,6 +104,19 @@ profiles:
     learning_rate: 2.0e-5
     loss_type: weighted_ce
     track: singlelabel
+
+# Weighted soft-voting ensemble (scripts/run_ensemble_eval.py)
+ensemble:
+  model_ids:
+    - m10_deberta_v3_large
+    - m13_roberta_large
+    - m14_electra_large
+  weights:
+    m10_deberta_v3_large: 0.4
+    m13_roberta_large: 0.3
+    m14_electra_large: 0.3
+  default_threshold: 0.5
+  tune_thresholds_on_val: true
 
 # LR search grid (run_deberta_tuning.py --grid lr); ASL held at m6 defaults
 deberta_tuning_grid:
