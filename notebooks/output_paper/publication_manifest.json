@@ -1,0 +1,87 @@
+{
+  "primary_model_id": "m6_deberta_v3",
+  "used_demo_fallback": false,
+  "sources_scanned": [
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\experiment_E2_thresholds.json",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\checkpoints\\m6_deberta_v3\\checkpoint-2\\trainer_state.json",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\processed\\data_stats.json",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\processed\\train.csv",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\ensemble_probs\\m6_deberta_v3_val.npz",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\ensemble_probs\\m6_deberta_v3_test.npz"
+  ],
+  "headline_test_thresholded": {
+    "macro_f1": 0.8074,
+    "macro_precision": 0.8125,
+    "macro_recall": 0.8053,
+    "micro_f1": 0.851,
+    "hamming_loss": 0.0471,
+    "subset_accuracy": 0.0
+  },
+  "headline_test_default": {
+    "macro_f1": 0.7892,
+    "macro_precision": 0.798,
+    "macro_recall": 0.781,
+    "micro_f1": 0.842
+  },
+  "val_test_gap": 0.0054,
+  "trace": [
+    {
+      "key": "training_history",
+      "value": 1,
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\checkpoints\\m6_deberta_v3\\checkpoint-2\\trainer_state.json",
+      "note": ""
+    },
+    {
+      "key": "label_distribution",
+      "value": {
+        "0": 75938,
+        "1": 12167,
+        "2": 62618,
+        "3": 32975,
+        "4": 3503,
+        "5": 6708,
+        "6": 13905
+      },
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\processed\\data_stats.json",
+      "note": ""
+    },
+    {
+      "key": "cooccurrence_matrix",
+      "value": "7x7",
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\processed\\train.csv",
+      "note": ""
+    },
+    {
+      "key": "threshold_sensitivity",
+      "value": 17,
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\ensemble_probs\\m6_deberta_v3_val.npz",
+      "note": ""
+    },
+    {
+      "key": "per_class_f1",
+      "value": {
+        "neutral": 0.6153324287652646,
+        "sadness_grief": 0.0,
+        "joy_amusement_excitement_optimism": 0.5702276707530648,
+        "anger_annoyance_disapproval_disgust": 0.19220549158547387,
+        "desire": 0.0,
+        "fear_nervousness": 0.0,
+        "love": 0.097856477166822
+      },
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\ensemble_probs\\m6_deberta_v3_test.npz",
+      "note": ""
+    },
+    {
+      "key": "benchmark_rows",
+      "value": 5,
+      "source": "experiment_*.json",
+      "note": ""
+    },
+    {
+      "key": "headline_config_override",
+      "value": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\config\\publication_defaults.yaml",
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\config\\publication_defaults.yaml",
+      "note": ""
+    }
+  ]
+}

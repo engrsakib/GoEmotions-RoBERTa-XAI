@@ -1,0 +1,94 @@
+{
+  "primary_model_id": "m6_deberta_v3",
+  "used_demo_fallback": false,
+  "sources_scanned": [
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\experiment_E2_thresholds.json",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\checkpoints\\m6_deberta_v3\\checkpoint-2\\trainer_state.json",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\processed\\data_stats.json",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\processed\\train.csv",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\ensemble_probs\\m6_deberta_v3_val.npz",
+    "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\ensemble_probs\\m6_deberta_v3_test.npz"
+  ],
+  "headline_test_thresholded": {
+    "macro_f1": 0.16936572850261847,
+    "macro_precision": 0.1204591586757192,
+    "macro_recall": 0.2857142857142857,
+    "micro_f1": 0.5502797761790568,
+    "hamming_loss": 0.19689227969482748,
+    "subset_accuracy": 0.017638412542871143
+  },
+  "headline_test_default": {
+    "macro_f1": 0.16936572850261847,
+    "macro_precision": 0.1204591586757192,
+    "macro_recall": 0.2857142857142857,
+    "micro_f1": 0.5502797761790568,
+    "hamming_loss": 0.19689227969482748,
+    "subset_accuracy": 0.017638412542871143
+  },
+  "val_test_gap": 0.0008,
+  "trace": [
+    {
+      "key": "training_history",
+      "value": 1,
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\checkpoints\\m6_deberta_v3\\checkpoint-2\\trainer_state.json",
+      "note": ""
+    },
+    {
+      "key": "label_distribution",
+      "value": {
+        "0": 75938,
+        "1": 12167,
+        "2": 62618,
+        "3": 32975,
+        "4": 3503,
+        "5": 6708,
+        "6": 13905
+      },
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\processed\\data_stats.json",
+      "note": ""
+    },
+    {
+      "key": "cooccurrence_matrix",
+      "value": "7x7",
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\processed\\train.csv",
+      "note": ""
+    },
+    {
+      "key": "threshold_sensitivity",
+      "value": 17,
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\ensemble_probs\\m6_deberta_v3_val.npz",
+      "note": ""
+    },
+    {
+      "key": "per_class_f1",
+      "value": {
+        "neutral": 0.6153324287652646,
+        "sadness_grief": 0.0,
+        "joy_amusement_excitement_optimism": 0.5702276707530648,
+        "anger_annoyance_disapproval_disgust": 0.19220549158547387,
+        "desire": 0.0,
+        "fear_nervousness": 0.0,
+        "love": 0.097856477166822
+      },
+      "source": "E:\\@AIML\\project\\GoEmotions-RoBERTa-XAI Fine-Tuned Sentiment Classifier with Token-Level Attribution Heatmaps\\notebooks\\artifacts\\exports\\ensemble_probs\\m6_deberta_v3_test.npz",
+      "note": ""
+    },
+    {
+      "key": "benchmark_rows",
+      "value": 5,
+      "source": "experiment_*.json",
+      "note": ""
+    }
+  ],
+  "figures": [
+    "fig1_system_architecture.png",
+    "fig2_label_distribution.png",
+    "fig3_train_val_loss.png",
+    "fig4_train_val_macro_f1.png",
+    "fig5_threshold_sensitivity.png",
+    "fig6_per_emotion_f1_heatmap.png",
+    "fig7_cooccurrence_heatmap.png",
+    "fig8_benchmark_comparison.png",
+    "fig9_ablation_analysis.png"
+  ]
+}

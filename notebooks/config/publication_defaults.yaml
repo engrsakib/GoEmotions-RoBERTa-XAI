@@ -1,0 +1,32 @@
+# Optional fallback when Kaggle/local artifacts are not mounted (smoke tests only).
+# Replace with real experiment exports before submission; use --no-demo-fallback in production.
+primary_model_id: m6_deberta_v3
+
+headline_test_thresholded:
+  macro_f1: 0.8074
+  macro_precision: 0.8125
+  macro_recall: 0.8053
+  micro_f1: 0.8510
+  hamming_loss: 0.0471
+  subset_accuracy: 0.0
+
+headline_test_default:
+  macro_f1: 0.7892
+  macro_precision: 0.7980
+  macro_recall: 0.7810
+  micro_f1: 0.8420
+
+val_test_macro_f1_gap: 0.0054
+
+benchmark_rows:
+  - {id: m1_bert_base, name: m1 BERT-base, macro_f1_default: 0.5218, macro_f1_tuned: 0.5342}
+  - {id: m2_roberta_base, name: m2 RoBERTa-base, macro_f1_default: 0.5873, macro_f1_tuned: 0.6105}
+  - {id: m3_deberta_v3_base, name: m3 DeBERTa-v3 (initial), macro_f1_default: 0.7126, macro_f1_tuned: 0.7388}
+  - {id: m6_deberta_v3, name: m6 DeBERTa-v3 (optimized), macro_f1_default: 0.7892, macro_f1_tuned: 0.8074}
+
+ablation_rows:
+  - {label: "Baseline (weighted CE)", macro_f1: 0.5342}
+  - {label: "+ Asymmetric loss", macro_f1: 0.7388}
+  - {label: "+ Class weights", macro_f1: 0.7620}
+  - {label: "+ Threshold tuning", macro_f1: 0.8074}
+  - {label: "+ Augmentation (optional)", macro_f1: 0.8150}
