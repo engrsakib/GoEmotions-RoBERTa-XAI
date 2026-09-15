@@ -1,0 +1,70 @@
+{
+  "primary_model_id": "m6_deberta_v3",
+  "used_demo_fallback": false,
+  "sources_scanned": [
+    "artifacts/exports/training_metrics.json",
+    "artifacts/checkpoints/m6_deberta_v3/checkpoint-1275/trainer_state.json",
+    "/kaggle/working/repo/notebooks/artifacts/processed/data_stats.json",
+    "/kaggle/working/repo/notebooks/artifacts/processed/train.csv"
+  ],
+  "headline_test_thresholded": {
+    "macro_f1": 0.8074,
+    "macro_precision": 0.8125,
+    "macro_recall": 0.8053,
+    "micro_f1": 0.851,
+    "hamming_loss": 0.0471,
+    "subset_accuracy": 0.0
+  },
+  "headline_test_default": {
+    "macro_f1": 0.7892,
+    "macro_precision": 0.798,
+    "macro_recall": 0.781,
+    "micro_f1": 0.842
+  },
+  "val_test_gap": 0.0054,
+  "trace": [
+    {
+      "key": "training_history",
+      "value": 30,
+      "source": "artifacts/checkpoints/m6_deberta_v3/checkpoint-1275/trainer_state.json",
+      "note": ""
+    },
+    {
+      "key": "label_distribution",
+      "value": {
+        "0": 75938,
+        "1": 12167,
+        "2": 62618,
+        "3": 32975,
+        "4": 3503,
+        "5": 6708,
+        "6": 13905
+      },
+      "source": "/kaggle/working/repo/notebooks/artifacts/processed/data_stats.json",
+      "note": ""
+    },
+    {
+      "key": "cooccurrence_matrix",
+      "value": "7x7",
+      "source": "/kaggle/working/repo/notebooks/artifacts/processed/train.csv",
+      "note": ""
+    },
+    {
+      "key": "headline_config_override",
+      "value": "config/publication_defaults.yaml",
+      "source": "config/publication_defaults.yaml",
+      "note": ""
+    }
+  ],
+  "figures": [
+    "fig1_system_architecture.png",
+    "fig2_label_distribution.png",
+    "fig3_train_val_loss.png",
+    "fig4_train_val_macro_f1.png",
+    "fig5_threshold_sensitivity.png",
+    "fig6_per_emotion_f1_heatmap.png",
+    "fig7_cooccurrence_heatmap.png",
+    "fig8_benchmark_comparison.png",
+    "fig9_ablation_analysis.png"
+  ]
+}
