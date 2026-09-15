@@ -25,3 +25,6 @@ packages/model/saved_emotion_model/weights/*
 packages/model/saved_emotion_model/*.bin
 packages/model/saved_emotion_model/*.safetensors
 packages/model/saved_emotion_model/checkpoint-*/
+
+.cursor/
+paper-write/
