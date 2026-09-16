@@ -1,14 +1,19 @@
 flowchart LR
-    A["Stage 0<br/>Bootstrap<br/>Environment setup"] --> B["Stage 1<br/>Data Pipeline<br/>Load, map, clean, split"]
-    B --> C["Stage 2<br/>EDA<br/>Distribution checks"]
-    C --> D["Stage 3<br/>Baselines<br/>TF-IDF LogReg / SVM"]
-    D --> E["Stage 4<br/>Train<br/>Transformer fine-tuning"]
-    E --> F["Stage 5<br/>Evaluate<br/>Metrics and reports"]
-    F --> G["Stage 6<br/>XAI<br/>Integrated Gradients"]
-    G --> H["Stage 7<br/>Export<br/>Saved model package"]
+    A["GoEmotions Reddit Comment Grid"] --> B["Prepare Token Batches"]
+    B --> C["DeBERTa-v3 Fine-Tuning Core"]
+    C --> D["7 Macro Logits"]
+    D --> E["Threshold Optimization Layer"]
+    E --> F["7-d Probability Vector"]
+    F --> G["Prediction + XAI Fusion Block"]
+    H["Input Text Tokens"] --> G
+    G --> I["Evaluation + IG Stack"]
+    I --> J["Per-class Decisions"]
+    J --> K["Final Emotion Report"]
 
     classDef process fill:#E6F2FF,stroke:#004080,stroke-width:2px,color:#1F2937;
-    classDef innovation fill:#FFEB3B,stroke:#004080,stroke-width:2px,color:#1F2937;
+    classDef focus fill:#EFFAF1,stroke:#4C9B4C,stroke-width:2px,color:#1F2937;
+    classDef method fill:#F9F2FB,stroke:#004080,stroke-width:2px,color:#1F2937;
 
-    class A,C,D,F,H process;
-    class B,E,G innovation;
+    class A,B,D,E,F,H,I,J,K process;
+    class G focus;
+    class C method;
