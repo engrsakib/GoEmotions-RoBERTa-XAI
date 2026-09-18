@@ -40,7 +40,7 @@ COMMENT_CARDS = [
     "Frustrated, but\nstill hopeful",
 ]
 
-SAMPLE_TEXT = 'sample reddit text ...\n"I feel worried but hopeful\nabout the final exam"'
+SAMPLE_TEXT = 'reddit comment sample ...\n"I feel worried but hopeful\nabout the final exam"'
 
 
 def rgb(hex_color: str) -> RGBColor:
@@ -112,7 +112,7 @@ def add_comment_grid(slide, left, top):
                 color="4A235A",
             )
             idx += 1
-    add_textbox(slide, left + Inches(0.16), top + Inches(2.30), Inches(2.04), Inches(0.42), "GoEmotions Reddit\ncomment grid", font_size=13.2, bold=True)
+    add_textbox(slide, left + Inches(0.12), top + Inches(2.28), Inches(2.12), Inches(0.46), "GoEmotions corpus\n+ 7 macro labels", font_size=13.0, bold=True)
 
 
 def add_patch_stack(slide, left, top, label):
@@ -152,8 +152,8 @@ def add_core_model(slide, left, top):
         bar = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, x, y, bar_w, Inches(h))
         style_shape(bar, LIGHT_BLUE, line_hex="6D8CCF", line_width=1.0)
 
-    add_textbox(slide, left + Inches(1.00), top + Inches(2.20), Inches(2.55), Inches(0.40), "DeBERTa-v3 fine-tuning core", font_size=14, bold=True)
-    add_textbox(slide, left + Inches(1.18), top + Inches(2.48), Inches(2.18), Inches(0.24), "encoder backbone + multilabel head", font_size=10.4, color=DARK_NAVY)
+    add_textbox(slide, left + Inches(0.88), top + Inches(2.20), Inches(2.80), Inches(0.40), "DeBERTa-v3 multilabel training", font_size=13.8, bold=True)
+    add_textbox(slide, left + Inches(1.06), top + Inches(2.48), Inches(2.44), Inches(0.24), "backbone encoder + 7-label sigmoid head", font_size=10.1, color=DARK_NAVY)
 
 
 def add_logits_block(slide, left, top):
@@ -177,13 +177,13 @@ def add_probability_vector(slide, left, top):
         circ = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.OVAL, left + Inches(0.16) + i * Inches(0.28), top + Inches(0.24), Inches(0.15), Inches(0.15))
         style_shape(circ, WARM_ACCENT, line_hex="C98712", line_width=1.0)
     add_textbox(slide, left + Inches(1.58), top + Inches(0.16), Inches(0.30), Inches(0.22), "...", font_size=18, bold=True)
-    add_textbox(slide, left + Inches(0.22), top + Inches(0.50), Inches(1.55), Inches(0.18), "7-d probability vector", font_size=9.8)
+    add_textbox(slide, left + Inches(0.18), top + Inches(0.50), Inches(1.64), Inches(0.18), "7-class calibrated probabilities", font_size=9.2)
 
 
 def add_fusion_block(slide, left, top):
     add_round_box(slide, left, top, Inches(3.02), Inches(1.76), PANEL_GREEN, line_hex="4C9B4C", line_width=1.6)
-    add_textbox(slide, left + Inches(0.34), top + Inches(0.16), Inches(2.34), Inches(0.42), "Prediction + XAI\nfusion block", font_size=14, bold=True)
-    add_textbox(slide, left + Inches(0.40), top + Inches(0.58), Inches(2.24), Inches(0.34), "[ Probabilities ; Thresholds ;\nImportant Tokens ]", font_size=10.2, bold=True, color="2A5E2A")
+    add_textbox(slide, left + Inches(0.28), top + Inches(0.16), Inches(2.46), Inches(0.42), "Prediction + XAI\ninference block", font_size=14, bold=True)
+    add_textbox(slide, left + Inches(0.36), top + Inches(0.58), Inches(2.30), Inches(0.34), "[ Calibrated scores ; Labels ;\nImportant tokens ]", font_size=10.0, bold=True, color="2A5E2A")
     for i in range(5):
         sq = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, left + Inches(0.48) + i * Inches(0.34), top + Inches(1.02), Inches(0.20), Inches(0.18))
         style_shape(sq, LIGHT_GREEN, line_hex="68AA68", line_width=1.0)
@@ -198,9 +198,9 @@ def add_stack_panel(slide, left, top):
     add_round_box(slide, left, top, Inches(1.55), Inches(1.92), PANEL_GOLD, line_hex="708B2A", line_width=1.2)
     header = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, left, top, Inches(1.55), Inches(0.26))
     style_shape(header, "7D9430", line_hex="708B2A", line_width=1.0)
-    add_textbox(slide, left + Inches(0.08), top + Inches(0.02), Inches(1.38), Inches(0.20), "Evaluation + IG stack", font_size=9.0, bold=True, color="FFFFFF")
+    add_textbox(slide, left + Inches(0.08), top + Inches(0.02), Inches(1.38), Inches(0.20), "Metrics + XAI stack", font_size=9.0, bold=True, color="FFFFFF")
     y = top + Inches(0.36)
-    for label in ("Per-label threshold", "IG token heatmap", "Metric summary"):
+    for label in ("Threshold check", "IG heatmap", "Metric summary"):
         add_round_box(slide, left + Inches(0.22), y, Inches(1.10), Inches(0.34), "F6FAE8", line_hex="A5B86C", line_width=1.0)
         add_textbox(slide, left + Inches(0.28), y + Inches(0.04), Inches(0.98), Inches(0.22), label, font_size=8.5, bold=True, color="41581F")
         y += Inches(0.44)
@@ -219,7 +219,7 @@ def add_final_report(slide, left, top):
     add_round_box(slide, left, top, Inches(2.80), Inches(0.78), GRAY_BOX, line_hex="6E83B7", line_width=1.6)
     icon = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE, left + Inches(0.12), top + Inches(0.15), Inches(0.38), Inches(0.36))
     style_shape(icon, "F4F8FF", line_hex="6E83B7", line_width=1.0)
-    add_textbox(slide, left + Inches(0.62), top + Inches(0.12), Inches(2.02), Inches(0.40), "Final emotion report\n(labels, scores, heatmap)", font_size=12.0, bold=True, align=PP_ALIGN.LEFT)
+    add_textbox(slide, left + Inches(0.62), top + Inches(0.12), Inches(2.02), Inches(0.40), "Final thesis outputs\n(labels, scores, figures)", font_size=11.8, bold=True, align=PP_ALIGN.LEFT)
 
 
 def build_pptx():
@@ -231,24 +231,24 @@ def build_pptx():
     bg.solid()
     bg.fore_color.rgb = rgb(BG)
 
-    add_textbox(slide, Inches(0.45), Inches(0.20), Inches(15.0), Inches(0.44), "GoEmotions-RoBERTa-XAI Detailed Workflow", font_size=23, bold=True)
-    add_textbox(slide, Inches(0.90), Inches(0.62), Inches(14.2), Inches(0.30), "Reference-style publication diagram with dataset flow, training core, calibration, and final report", font_size=11.4, color=DARK_NAVY)
+    add_textbox(slide, Inches(0.45), Inches(0.20), Inches(15.0), Inches(0.44), "GoEmotions-RoBERTa-XAI Thesis Pipeline", font_size=23, bold=True)
+    add_textbox(slide, Inches(0.90), Inches(0.62), Inches(14.2), Inches(0.30), "Idea-style publication diagram adapted to the actual preprocessing, training, calibration, and XAI workflow", font_size=11.2, color=DARK_NAVY)
 
     add_comment_grid(slide, Inches(0.18), Inches(1.62))
-    add_textbox(slide, Inches(2.86), Inches(1.30), Inches(2.22), Inches(0.24), "Prepare token batches", font_size=11.1, bold=True)
-    add_textbox(slide, Inches(5.02), Inches(1.30), Inches(1.90), Inches(0.24), "Sequence of batches", font_size=11.1, bold=True)
-    add_patch_stack(slide, Inches(3.10), Inches(1.74), "Batch 1")
-    add_patch_stack(slide, Inches(4.30), Inches(1.74), "Batch 2")
+    add_textbox(slide, Inches(2.80), Inches(1.30), Inches(2.38), Inches(0.24), "Clean, map, split, tokenize", font_size=11.1, bold=True)
+    add_textbox(slide, Inches(5.02), Inches(1.30), Inches(1.90), Inches(0.24), "Mini-batch stream", font_size=11.1, bold=True)
+    add_patch_stack(slide, Inches(3.10), Inches(1.74), "Train")
+    add_patch_stack(slide, Inches(4.30), Inches(1.74), "Val")
     add_textbox(slide, Inches(5.54), Inches(1.86), Inches(0.34), Inches(0.20), "...", font_size=18, bold=True)
-    add_patch_stack(slide, Inches(5.96), Inches(1.74), "Batch n")
+    add_patch_stack(slide, Inches(5.96), Inches(1.74), "Test")
 
     add_core_model(slide, Inches(3.10), Inches(2.36))
     add_logits_block(slide, Inches(4.68), Inches(5.48))
     add_round_box(slide, Inches(3.95), Inches(6.56), Inches(2.86), Inches(0.92), PANEL_GOLD, line_hex="D3B35A", line_width=1.3)
-    add_textbox(slide, Inches(4.16), Inches(6.76), Inches(2.44), Inches(0.38), "Threshold optimization layer\n(validation-only per-class tuning)", font_size=12.0, bold=True, color="6B4E00")
+    add_textbox(slide, Inches(4.10), Inches(6.76), Inches(2.56), Inches(0.38), "Threshold tuning layer\n(validation-only per-class search)", font_size=11.8, bold=True, color="6B4E00")
     add_probability_vector(slide, Inches(7.20), Inches(6.58))
     add_fusion_block(slide, Inches(11.42), Inches(5.18))
-    add_textbox(slide, Inches(11.25), Inches(7.56), Inches(3.32), Inches(0.22), "Sequence of input text tokens", font_size=10.0, color=DARK_NAVY)
+    add_textbox(slide, Inches(11.25), Inches(7.56), Inches(3.32), Inches(0.22), "Input text tokens for inference", font_size=10.0, color=DARK_NAVY)
     add_round_box(slide, Inches(11.36), Inches(7.15), Inches(3.08), Inches(0.54), "F6F4EC", line_hex="9C8E68", line_width=1.1)
     add_textbox(slide, Inches(11.52), Inches(7.23), Inches(2.76), Inches(0.34), SAMPLE_TEXT, font_size=9.4, bold=True, align=PP_ALIGN.LEFT, color="554C33")
     add_stack_panel(slide, Inches(12.18), Inches(3.12))
@@ -274,7 +274,7 @@ def build_pptx():
     p = footer_tf.paragraphs[0]
     p.alignment = PP_ALIGN.LEFT
     run = p.add_run()
-    run.text = "Editable vector diagram generated with python-pptx and adapted to the user's detailed reference style."
+    run.text = "Editable vector diagram generated with python-pptx and adapted to the actual thesis pipeline."
     run.font.name = "Arial"
     run.font.size = Pt(9.5)
     run.font.color.rgb = rgb(DARK_NAVY)
@@ -297,8 +297,8 @@ def build_svg():
     height = 1800
     parts: list[str] = []
     parts.append(f'<rect width="100%" height="100%" fill="#{BG}"/>')
-    parts.append(svg_text(width // 2, 72, ["GoEmotions-RoBERTa-XAI Detailed Workflow"], size=42, weight="700"))
-    parts.append(svg_text(width // 2, 118, ["Reference-style publication diagram with dataset flow, training core, calibration, and final report"], size=20, fill=DARK_NAVY))
+    parts.append(svg_text(width // 2, 72, ["GoEmotions-RoBERTa-XAI Thesis Pipeline"], size=42, weight="700"))
+    parts.append(svg_text(width // 2, 118, ["Idea-style publication diagram adapted to the actual preprocessing, training, calibration, and XAI workflow"], size=20, fill=DARK_NAVY))
 
     parts.append(f'<rect x="60" y="280" rx="28" ry="28" width="500" height="600" fill="#{PANEL_LAVENDER}" stroke="#{DARK_NAVY}" stroke-width="4"/>')
     card_x0 = 88
@@ -311,11 +311,11 @@ def build_svg():
             parts.append(f'<rect x="{x}" y="{y}" width="116" height="116" fill="#EAD5FF" stroke="#5B2C83" stroke-width="2"/>')
             parts.append(svg_text(x + 58, y + 44, COMMENT_CARDS[idx].split("\n"), size=17, weight="700", fill="4A235A"))
             idx += 1
-    parts.append(svg_text(310, 824, ["GoEmotions Reddit", "comment grid"], size=28, weight="700"))
+    parts.append(svg_text(310, 824, ["GoEmotions corpus", "+ 7 macro labels"], size=28, weight="700"))
 
-    parts.append(svg_text(720, 210, ["Prepare token batches"], size=22, weight="700"))
-    parts.append(svg_text(1140, 210, ["Sequence of batches"], size=22, weight="700"))
-    for x, y, label in ((700, 300, "Batch 1"), (920, 300, "Batch 2"), (1400, 300, "Batch n")):
+    parts.append(svg_text(720, 210, ["Clean, map, split, tokenize"], size=22, weight="700"))
+    parts.append(svg_text(1140, 210, ["Mini-batch stream"], size=22, weight="700"))
+    for x, y, label in ((700, 300, "Train"), (920, 300, "Val"), (1400, 300, "Test")):
         for offset in (22, 10, 0):
             parts.append(f'<rect x="{x + offset}" y="{y + offset}" width="104" height="104" fill="#C78CF2" stroke="#5B2C83" stroke-width="2"/>')
         parts.append(svg_text(x + 52, y + 140, [label], size=16, fill="4A235A"))
@@ -331,23 +331,23 @@ def build_svg():
     parts.append(f'<rect x="1032" y="800" rx="10" ry="10" width="60" height="44" fill="#C9D8F7" stroke="#6D8CCF" stroke-width="2"/>')
     for x, y, w, h in ((1140, 790, 26, 90), (1188, 760, 26, 120), (1236, 730, 26, 150), (1284, 700, 26, 180)):
         parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="#{LIGHT_BLUE}" stroke="#6D8CCF" stroke-width="2"/>')
-    parts.append(svg_text(1080, 930, ["DeBERTa-v3 fine-tuning core"], size=31, weight="700"))
-    parts.append(svg_text(1080, 968, ["encoder backbone + multilabel head"], size=18, fill=DARK_NAVY))
+    parts.append(svg_text(1080, 930, ["DeBERTa-v3 multilabel training"], size=31, weight="700"))
+    parts.append(svg_text(1080, 968, ["backbone encoder + 7-label sigmoid head"], size=18, fill=DARK_NAVY))
 
     for x, y in ((980, 1042), (1040, 1042), (1100, 1042), (980, 1102), (1040, 1102), (1100, 1102), (1160, 1102)):
         parts.append(f'<rect x="{x}" y="{y}" width="38" height="38" fill="#{LIGHT_ORANGE}" stroke="#C96A1B" stroke-width="2"/>')
     parts.append(f'<rect x="848" y="1180" rx="20" ry="20" width="462" height="128" fill="#{PANEL_GOLD}" stroke="#D3B35A" stroke-width="3"/>')
-    parts.append(svg_text(1079, 1230, ["Threshold optimization layer", "(validation-only per-class tuning)"], size=24, weight="700", fill="6B4E00"))
+    parts.append(svg_text(1079, 1230, ["Threshold tuning layer", "(validation-only per-class search)"], size=24, weight="700", fill="6B4E00"))
     parts.append(f'<rect x="1420" y="1192" rx="18" ry="18" width="330" height="118" fill="#{GRAY_BOX}" stroke="#8A8F98" stroke-width="3"/>')
     for i in range(5):
         cx = 1470 + i * 48
         parts.append(f'<circle cx="{cx}" cy="1244" r="14" fill="#{WARM_ACCENT}" stroke="#C98712" stroke-width="2"/>')
     parts.append(svg_text(1690, 1238, ["..."], size=30, weight="700"))
-    parts.append(svg_text(1586, 1288, ["7-d probability vector"], size=18))
+    parts.append(svg_text(1586, 1288, ["7-class calibrated probabilities"], size=18))
 
     parts.append(f'<rect x="2290" y="960" rx="24" ry="24" width="520" height="300" fill="#{PANEL_GREEN}" stroke="#4C9B4C" stroke-width="4"/>')
-    parts.append(svg_text(2550, 1034, ["Prediction + XAI", "fusion block"], size=30, weight="700"))
-    parts.append(svg_text(2550, 1108, ["[ Probabilities ; Thresholds ;", "Important Tokens ]"], size=21, weight="700", fill="2A5E2A"))
+    parts.append(svg_text(2550, 1034, ["Prediction + XAI", "inference block"], size=30, weight="700"))
+    parts.append(svg_text(2550, 1108, ["[ Calibrated scores ; Labels ;", "Important tokens ]"], size=21, weight="700", fill="2A5E2A"))
     for i in range(5):
         x = 2360 + i * 58
         parts.append(f'<rect x="{x}" y="1155" width="34" height="30" fill="#{LIGHT_GREEN}" stroke="#68AA68" stroke-width="2"/>')
@@ -359,8 +359,8 @@ def build_svg():
 
     parts.append(f'<rect x="2430" y="560" rx="20" ry="20" width="250" height="330" fill="#{PANEL_GOLD}" stroke="#708B2A" stroke-width="3"/>')
     parts.append(f'<rect x="2430" y="560" width="250" height="44" fill="#7D9430" stroke="#708B2A" stroke-width="2"/>')
-    parts.append(svg_text(2555, 590, ["Evaluation + IG stack"], size=16, weight="700", fill="FFFFFF"))
-    for y, text in ((640, "Per-label threshold"), (714, "IG token heatmap"), (788, "Metric summary")):
+    parts.append(svg_text(2555, 590, ["Metrics + XAI stack"], size=16, weight="700", fill="FFFFFF"))
+    for y, text in ((640, "Threshold check"), (714, "IG heatmap"), (788, "Metric summary")):
         parts.append(f'<rect x="2465" y="{y}" rx="16" ry="16" width="180" height="48" fill="#F6FAE8" stroke="#A5B86C" stroke-width="2"/>')
         parts.append(svg_text(2555, y + 30, [text], size=15, weight="700", fill="41581F"))
 
@@ -373,11 +373,11 @@ def build_svg():
 
     parts.append(f'<rect x="2190" y="160" rx="18" ry="18" width="620" height="126" fill="#{GRAY_BOX}" stroke="#6E83B7" stroke-width="4"/>')
     parts.append(f'<rect x="2220" y="194" rx="12" ry="12" width="78" height="72" fill="#F4F8FF" stroke="#6E83B7" stroke-width="2"/>')
-    parts.append(svg_text(2510, 212, ["Final emotion report", "(labels, scores, heatmap)"], size=26, weight="700"))
+    parts.append(svg_text(2510, 212, ["Final thesis outputs", "(labels, scores, figures)"], size=26, weight="700"))
 
-    parts.append(svg_text(2510, 1402, ["Sequence of input text tokens"], size=18, fill=DARK_NAVY))
+    parts.append(svg_text(2510, 1402, ["Input text tokens for inference"], size=18, fill=DARK_NAVY))
     parts.append(f'<rect x="2280" y="1310" rx="18" ry="18" width="540" height="98" fill="#F6F4EC" stroke="#9C8E68" stroke-width="2"/>')
-    parts.append(svg_text(2550, 1356, ['sample reddit text ...', '"I feel worried but hopeful', 'about the final exam"'], size=18, weight="700", fill="554C33"))
+    parts.append(svg_text(2550, 1356, ['reddit comment sample ...', '"I feel worried but hopeful', 'about the final exam"'], size=18, weight="700", fill="554C33"))
 
     arrows = [
         (560, 540, 690, 420),
@@ -411,16 +411,16 @@ def build_mermaid() -> str:
     mermaid = dedent(
         """
         flowchart LR
-            A["GoEmotions Reddit Comment Grid"] --> B["Prepare Token Batches"]
-            B --> C["DeBERTa-v3 Fine-Tuning Core"]
+            A["GoEmotions Corpus + 7 Macro Labels"] --> B["Clean, Map, Split, Tokenize"]
+            B --> C["DeBERTa-v3 Multilabel Training"]
             C --> D["7 Macro Logits"]
-            D --> E["Threshold Optimization Layer"]
-            E --> F["7-d Probability Vector"]
-            F --> G["Prediction + XAI Fusion Block"]
+            D --> E["Threshold Tuning Layer"]
+            E --> F["7-class Calibrated Probabilities"]
+            F --> G["Prediction + XAI Inference Block"]
             H["Input Text Tokens"] --> G
-            G --> I["Evaluation + IG Stack"]
+            G --> I["Metrics + XAI Stack"]
             I --> J["Per-class Decisions"]
-            J --> K["Final Emotion Report"]
+            J --> K["Final Thesis Outputs"]
 
             classDef process fill:#E6F2FF,stroke:#004080,stroke-width:2px,color:#1F2937;
             classDef focus fill:#EFFAF1,stroke:#4C9B4C,stroke-width:2px,color:#1F2937;
