@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch
 
 
 FIG_W = 15.0
@@ -121,6 +121,23 @@ def ortho_arrow(ax, start, end, *, mid_x=None, mid_y=None, color=BORDER, lw=1.8)
     ax.add_patch(arrow)
 
 
+def add_flow_icon(ax, x, y, radius=0.12):
+    node = Circle((x, y), radius=radius, facecolor=BORDER, edgecolor=BORDER, linewidth=1.2, zorder=5)
+    ax.add_patch(node)
+    ax.text(
+        x,
+        y,
+        ">>",
+        ha="center",
+        va="center",
+        fontsize=7.5,
+        fontweight="bold",
+        color="white",
+        family="Arial",
+        zorder=6,
+    )
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     out_dir = root / "figures"
@@ -231,29 +248,29 @@ def main() -> None:
     )
     add_box(
         ax,
-        5.35,
+        5.28,
         2.02,
-        2.10,
+        2.08,
         1.12,
-        "Clipped Asymmetric Loss\n+ Class Weighting",
-        "$\\mathcal{L}_{ASL}$ for training\n$\\gamma_{neg}, \\gamma_{pos}, clip, \\mathbf{w}_c$",
+        "Clipped ASL +\nClass Weighting",
+        "training objective\n$\\gamma_{neg}, \\gamma_{pos}, clip, \\mathbf{w}_c$",
         fill=BOX_ORANGE,
-        title_size=9.3,
-        body_size=8.6,
-        title_y=0.66,
-        body_y=0.28,
+        title_size=9.5,
+        body_size=8.2,
+        title_y=0.67,
+        body_y=0.29,
     )
     add_box(
         ax,
-        7.58,
+        7.86,
         2.02,
-        2.10,
+        1.98,
         1.12,
-        "Validation Threshold\nTuning",
-        "validation n = 5,426\ncoordinate ascent for $t_c$",
+        "Per-Class Threshold\nSearch",
+        "validation set (n = 5,426)\ncoordinate ascent for $t_c$",
         fill=BOX_ORANGE,
-        title_size=8.8,
-        body_size=8.1,
+        title_size=9.1,
+        body_size=8.0,
         title_y=0.66,
         body_y=0.28,
     )
@@ -298,14 +315,19 @@ def main() -> None:
         body_y=0.27,
     )
 
+    flow_x = 7.55
+    flow_y = 3.28
+    add_flow_icon(ax, flow_x, flow_y)
+
     # Orthogonal connectors.
     ortho_arrow(ax, (2.43, 5.16), (2.43, 4.70))
     ortho_arrow(ax, (2.43, 3.78), (2.43, 3.30))
     ortho_arrow(ax, (3.78, 2.84), (5.45, 5.50), mid_x=4.55)
     ortho_arrow(ax, (7.57, 4.92), (7.57, 4.48))
-    ortho_arrow(ax, (7.55, 3.62), (7.55, 3.14))
-    ortho_arrow(ax, (8.63, 4.05), (8.63, 3.14))
-    ortho_arrow(ax, (9.68, 2.58), (11.28, 4.86), mid_x=10.35)
+    ortho_arrow(ax, (7.55, 3.62), (flow_x, flow_y + 0.12))
+    ortho_arrow(ax, (flow_x - 0.04, flow_y - 0.12), (6.32, 3.14), mid_y=3.20)
+    ortho_arrow(ax, (flow_x + 0.04, flow_y - 0.12), (8.85, 3.14), mid_y=3.20)
+    ortho_arrow(ax, (9.84, 2.58), (11.28, 4.86), mid_x=10.35)
     ortho_arrow(ax, (12.62, 4.36), (12.62, 3.90))
     ortho_arrow(ax, (12.62, 2.78), (12.62, 2.16))
 
